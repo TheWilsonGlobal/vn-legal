@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    "rootDir": "./apps/server/src",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {},
+    "declaration": false,
+    "sourceMap": false
+  },
+  "include": ["apps/server/src/**/*"],
+  "exclude": ["node_modules", "dist", "apps/server/tests"]
+}
