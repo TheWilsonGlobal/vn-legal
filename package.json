@@ -72,6 +72,9 @@
     "vitest": "^2.1.8"
   },
   "pnpm": {
+    "overrides": {
+      "congraph-rag>congraphdb": "0.2.1"
+    },
     "onlyBuiltDependencies": [
       "esbuild",
       "onnxruntime-node",

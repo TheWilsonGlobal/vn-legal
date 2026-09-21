@@ -6,6 +6,12 @@
 import { vi } from "vitest";
 
 // Mock config
+//
+// The `llm` block is not optional padding: routes/admin.ts reads
+// `config.llm.apiUrl` at MODULE scope, so a mock missing it throws during
+// import and fails the whole suite with "Cannot read properties of undefined"
+// rather than a single assertion. Anything read at import time has to exist
+// here, even when the test under it never touches the LLM.
 vi.mock("../src/shared/config", () => ({
   config: {
     graphDbPath: "/test/db/path",
@@ -16,6 +22,14 @@ vi.mock("../src/shared/config", () => ({
     },
     logging: {
       level: "info",
+    },
+    llm: {
+      provider: "template",
+      model: "test-model",
+      temperature: 0.3,
+      maxTokens: 2000,
+      apiKey: "",
+      apiUrl: "http://127.0.0.1:5814",
     },
   },
 }));

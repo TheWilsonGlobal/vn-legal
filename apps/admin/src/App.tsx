@@ -683,6 +683,13 @@ function App() {
   const [diagDuration, setDiagDuration] = useState<number | null>(null);
   const [diagError, setDiagError] = useState<string | null>(null);
 
+  // Endpoint editor states
+  const [endpointDraft, setEndpointDraft] = useState("");
+  const [endpointEditing, setEndpointEditing] = useState(false);
+  const [endpointSaving, setEndpointSaving] = useState(false);
+  const [endpointError, setEndpointError] = useState<string | null>(null);
+  const [endpointNotice, setEndpointNotice] = useState<string | null>(null);
+
   const fetchLlmDetails = async () => {
     try {
       const statusRes = await fetch("/api/admin/llm/status");
@@ -697,13 +704,41 @@ function App() {
     }
   };
 
+  const handleSaveEndpoint = async () => {
+    setEndpointSaving(true);
+    setEndpointError(null);
+    setEndpointNotice(null);
+    try {
+      const res = await fetch("/api/admin/llm/endpoint", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiUrl: endpointDraft }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setEndpointError(data.error || "Không cập nhật được endpoint.");
+        return;
+      }
+      setEndpointNotice(data.message);
+      setEndpointEditing(false);
+      await fetchLlmDetails();
+    } catch (err) {
+      setEndpointError((err as Error).message || String(err));
+    } finally {
+      setEndpointSaving(false);
+    }
+  };
+
   useEffect(() => {
     if (activeView === "llm") {
       fetchLlmDetails();
+      // Pause polling while the endpoint is being edited so a refresh can't
+      // clobber what is being typed.
+      if (endpointEditing) return;
       const interval = setInterval(fetchLlmDetails, 5000);
       return () => clearInterval(interval);
     }
-  }, [activeView]);
+  }, [activeView, endpointEditing]);
 
   const handleRunDiagnostic = async () => {
     setDiagLoading(true);
@@ -812,14 +847,144 @@ function App() {
             <div className="stat-icon orange">
               <i className="fas fa-network-wired"></i>
             </div>
-            <div className="stat-info">
-              <h3>Endpoint</h3>
-              <div
-                className="value"
-                style={{ fontSize: "0.9rem", wordBreak: "break-all" }}
-              >
-                {llmStatus?.apiUrl || "N/A"}
-              </div>
+            <div className="stat-info" style={{ minWidth: 0, flex: 1 }}>
+              <h3>
+                Endpoint
+                {llmStatus?.editableEndpoint && !endpointEditing && (
+                  <button
+                    onClick={() => {
+                      setEndpointDraft(llmStatus?.apiUrl || "");
+                      setEndpointError(null);
+                      setEndpointNotice(null);
+                      setEndpointEditing(true);
+                    }}
+                    title="Sửa endpoint"
+                    style={{
+                      marginLeft: "8px",
+                      background: "none",
+                      border: "none",
+                      color: "#8b5cf6",
+                      cursor: "pointer",
+                      padding: 0,
+                      fontSize: "0.85rem",
+                    }}
+                  >
+                    <i className="fas fa-pen-to-square"></i> Sửa
+                  </button>
+                )}
+              </h3>
+
+              {endpointEditing ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                    marginTop: "4px",
+                  }}
+                >
+                  <input
+                    type="text"
+                    value={endpointDraft}
+                    autoFocus
+                    spellCheck={false}
+                    placeholder="http://localhost:5814"
+                    onChange={(e) => setEndpointDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveEndpoint();
+                      if (e.key === "Escape") setEndpointEditing(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "6px 8px",
+                      borderRadius: "6px",
+                      border: "1px solid #3f3f52",
+                      background: "#16161f",
+                      color: "#e5e7eb",
+                      fontSize: "0.85rem",
+                      fontFamily: "monospace",
+                    }}
+                  />
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    <button
+                      className="btn-primary"
+                      disabled={endpointSaving}
+                      onClick={handleSaveEndpoint}
+                      style={{ padding: "4px 10px", fontSize: "0.8rem" }}
+                    >
+                      {endpointSaving ? "Đang lưu..." : "Lưu"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEndpointEditing(false);
+                        setEndpointError(null);
+                      }}
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: "0.8rem",
+                        borderRadius: "6px",
+                        border: "1px solid #3f3f52",
+                        background: "transparent",
+                        color: "#9ca3af",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Hủy
+                    </button>
+                    {llmStatus?.defaultApiUrl &&
+                      endpointDraft !== llmStatus.defaultApiUrl && (
+                        <button
+                          title={`Mặc định: ${llmStatus.defaultApiUrl}`}
+                          onClick={() =>
+                            setEndpointDraft(llmStatus.defaultApiUrl)
+                          }
+                          style={{
+                            padding: "4px 10px",
+                            fontSize: "0.8rem",
+                            borderRadius: "6px",
+                            border: "1px solid #3f3f52",
+                            background: "transparent",
+                            color: "#9ca3af",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Mặc định
+                        </button>
+                      )}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="value"
+                  style={{ fontSize: "0.9rem", wordBreak: "break-all" }}
+                >
+                  {llmStatus?.apiUrl || "N/A"}
+                </div>
+              )}
+
+              {endpointError && (
+                <div
+                  style={{
+                    color: "#f87171",
+                    fontSize: "0.78rem",
+                    marginTop: "6px",
+                  }}
+                >
+                  {endpointError}
+                </div>
+              )}
+              {endpointNotice && !endpointEditing && (
+                <div
+                  style={{
+                    color:
+                      llmStatus?.status === "connected" ? "#34d399" : "#fbbf24",
+                    fontSize: "0.78rem",
+                    marginTop: "6px",
+                  }}
+                >
+                  {endpointNotice}
+                </div>
+              )}
             </div>
           </div>
         </div>

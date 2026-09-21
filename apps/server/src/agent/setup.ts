@@ -139,15 +139,10 @@ export class LegalConsultationAgent {
       const systemPrompt = LEGAL_CONSULTANT_SYSTEM_PROMPT;
       const userPrompt = createConsultationPrompt(context);
 
-      let prompt = `${systemPrompt}\n\n${userPrompt}`;
-      if (config.llm.provider === "llama") {
-        prompt = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n${systemPrompt}<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n${userPrompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n`;
-      }
-
       llmTracker.setLastLog(systemPrompt, userPrompt, "Thinking...");
 
       try {
-        const result = await llm.generate(prompt);
+        const result = await llm.generate(userPrompt, { systemPrompt });
         const responseText = result.content;
         llmTracker.setLastLog(systemPrompt, userPrompt, responseText);
         return { responseText, systemPrompt, userPrompt };
@@ -457,11 +452,6 @@ Nếu cần trợ giúp, vui lòng liên hệ với chúng tôi.`;
         const systemPrompt = LEGAL_CONSULTANT_SYSTEM_PROMPT;
         const userPrompt = createConsultationPrompt(context);
 
-        let prompt = `${systemPrompt}\n\n${userPrompt}`;
-        if (config.llm.provider === "llama") {
-          prompt = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n${systemPrompt}<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n${userPrompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n`;
-        }
-
         llmTracker.setLastLog(
           systemPrompt,
           userPrompt,
@@ -470,7 +460,7 @@ Nếu cần trợ giúp, vui lòng liên hệ với chúng tôi.`;
 
         let fullResponse = "";
         try {
-          for await (const chunk of llm.stream(prompt)) {
+          for await (const chunk of llm.stream(userPrompt, { systemPrompt })) {
             fullResponse += chunk;
             yield formatMarkdownResponse(chunk);
           }

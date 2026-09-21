@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  congraph-rag>congraphdb: 0.2.1
+
 importers:
 
   .:
@@ -1471,13 +1474,6 @@ packages:
 
   congraphdb@0.2.1:
     resolution: {integrity: sha512-4QOQmICL1eFkhPD6J9erSIPN+LUsu8Q+gAfzSVap1vrtym49RdAfn+cM2RxYktfOqYkDf0WNWkvmywq7Cw3vlA==}
-    engines: {node: '>= 20'}
-    cpu: [x64, arm64]
-    os: [darwin, linux, win32]
-    hasBin: true
-
-  congraphdb@file:../../congraphdb:
-    resolution: {directory: ../../congraphdb, type: directory}
     engines: {node: '>= 20'}
     cpu: [x64, arm64]
     os: [darwin, linux, win32]
@@ -4359,7 +4355,7 @@ snapshots:
       axios: 1.16.1
       clsx: 2.1.1
       commander: 12.1.0
-      congraphdb: file:../../congraphdb
+      congraphdb: 0.2.1
       cytoscape: 3.33.4
       fastify: 5.8.5
       lucide-react: 0.479.0(react@19.2.5)
@@ -4377,8 +4373,6 @@ snapshots:
       - ws
 
   congraphdb@0.2.1: {}
-
-  congraphdb@file:../../congraphdb: {}
 
   consola@3.4.2: {}
 

@@ -14,10 +14,9 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["apps/client/src/*"],
-      "@admin/*": ["apps/admin/src/*"]
+      "@/*": ["./apps/client/src/*"],
+      "@admin/*": ["./apps/admin/src/*"]
     }
   },
   "include": ["apps/client/src", "apps/admin/src", "*.config.ts"]

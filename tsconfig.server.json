@@ -10,8 +10,6 @@
     "skipLibCheck": true,
     "strict": false,
     "resolveJsonModule": true,
-    "baseUrl": ".",
-    "paths": {},
     "declaration": false,
     "sourceMap": false
   },

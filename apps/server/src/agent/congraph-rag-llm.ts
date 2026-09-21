@@ -200,25 +200,77 @@ ${context || "Không có ngữ cảnh bổ sung."}
 
 export class LlamaLLMAdapter extends BaseLLM {
   constructor(
-    private apiUrl: string = "http://localhost:8080",
+    private apiUrl: string = "http://localhost:5814",
     private options: { temperature?: number; maxTokens?: number } = {},
   ) {
     super();
   }
 
+  /**
+   * Repoint this adapter at a different llama.cpp server.
+   *
+   * The adapter is constructed once at startup and held by the agent, so
+   * changing config alone would leave requests going to the old endpoint.
+   */
+  setApiUrl(apiUrl: string): void {
+    this.apiUrl = apiUrl;
+  }
+
+  getApiUrl(): string {
+    return this.apiUrl;
+  }
+
+  /**
+   * Builds the OpenAI-style `messages` array llama.cpp expects.
+   *
+   * This adapter deliberately targets `/v1/chat/completions` rather than the
+   * raw `/completion` endpoint. `/completion` applies NO template — it feeds the
+   * string to the tokenizer verbatim — so callers had to hand-build one, and the
+   * hand-built template was Llama-3's (`<|begin_of_text|>`, `<|start_header_id|>`,
+   * `<|eot_id|>`). Those markers are only real tokens for Llama-3 models.
+   *
+   * Point the same code at a model with a different template — LFM-2.5 (ChatML),
+   * Qwen, Mistral — and the tokenizer shreds those markers into meaningless text
+   * fragments. The model never sees a system/user structure, so it answers a
+   * question nobody asked. The tell is unmistakable: it starts echoing malformed
+   * copies of the markers back (`</|eot id|>`, `</|efin|`), because it is
+   * imitating text rather than honouring a control token.
+   *
+   * `/v1/chat/completions` makes llama.cpp apply each model's OWN template, read
+   * from the GGUF metadata. That is what keeps this adapter model-agnostic, and
+   * it is also why no `stop` array is sent any more: the correct stop token comes
+   * from the same metadata, whereas a hardcoded list is wrong for every model it
+   * was not written for.
+   */
+  private buildMessages(
+    prompt: string,
+    options?: Record<string, unknown>,
+  ): Array<{ role: string; content: string }> {
+    const systemPrompt =
+      typeof options?.systemPrompt === "string"
+        ? options.systemPrompt
+        : undefined;
+
+    return systemPrompt
+      ? [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: prompt },
+        ]
+      : [{ role: "user", content: prompt }];
+  }
+
   async generate(
     prompt: string,
-    _options?: Record<string, unknown>,
+    options?: Record<string, unknown>,
   ): Promise<LLMResponse> {
     try {
-      const response = await fetch(`${this.apiUrl}/completion`, {
+      const response = await fetch(`${this.apiUrl}/v1/chat/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt,
-          n_predict: this.options.maxTokens || 2000,
+          messages: this.buildMessages(prompt, options),
+          max_tokens: this.options.maxTokens || 2000,
           temperature: this.options.temperature ?? 0.3,
-          stop: ["</s>", "<|eot_id|>", "<|end|>"],
         }),
       });
 
@@ -228,15 +280,14 @@ export class LlamaLLMAdapter extends BaseLLM {
       }
 
       const result = (await response.json()) as any;
-      const content = result.content || result.response || "";
+      const content = result.choices?.[0]?.message?.content || "";
 
       return {
         content,
         usage: {
-          promptTokens: result.tokens_evaluated || 0,
-          completionTokens: result.tokens_predicted || 0,
-          totalTokens:
-            (result.tokens_evaluated || 0) + (result.tokens_predicted || 0),
+          promptTokens: result.usage?.prompt_tokens || 0,
+          completionTokens: result.usage?.completion_tokens || 0,
+          totalTokens: result.usage?.total_tokens || 0,
         },
       };
     } catch (error) {
@@ -247,17 +298,16 @@ export class LlamaLLMAdapter extends BaseLLM {
 
   async *stream(
     prompt: string,
-    _options?: Record<string, unknown>,
+    options?: Record<string, unknown>,
   ): AsyncIterable<string> {
     try {
-      const response = await fetch(`${this.apiUrl}/completion`, {
+      const response = await fetch(`${this.apiUrl}/v1/chat/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt,
-          n_predict: this.options.maxTokens || 2000,
+          messages: this.buildMessages(prompt, options),
+          max_tokens: this.options.maxTokens || 2000,
           temperature: this.options.temperature ?? 0.3,
-          stop: ["</s>", "<|eot_id|>", "<|end|>"],
           stream: true,
         }),
       });
@@ -291,7 +341,12 @@ export class LlamaLLMAdapter extends BaseLLM {
 
           try {
             const parsed = JSON.parse(jsonStr);
-            const content = parsed.content;
+            // OpenAI-style SSE nests the token under choices[].delta.content;
+            // `parsed.content` is the raw /completion shape this adapter used
+            // before and is kept as a fallback so a server speaking the older
+            // format still streams rather than silently yielding nothing.
+            const content =
+              parsed.choices?.[0]?.delta?.content ?? parsed.content;
             if (content) {
               yield content;
             }
@@ -474,7 +529,7 @@ export function createLLMAdapter(
         options,
       );
     case "llama":
-      return new LlamaLLMAdapter(apiUrl || "http://localhost:8080", options);
+      return new LlamaLLMAdapter(apiUrl || "http://localhost:5814", options);
     case "template":
     default:
       return new TemplateLLMAdapter(embedder, options);

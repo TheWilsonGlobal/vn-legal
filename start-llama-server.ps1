@@ -1,4 +1,4 @@
-$ModelDir = "C:\Models"
+$ModelDir = "C:\Hub\Models"
 $ModelPath = "$ModelDir\Llama-3.2-1B-Instruct-Q4_K_M.gguf"
 $ModelUrl = "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf"
 $ServerExe = "C:\Tools\llama-tools\llama-server.exe"

@@ -66,7 +66,9 @@ export const config = {
     temperature: 0.3,
     maxTokens: 2000,
     apiKey: process.env.ANTHROPIC_API_KEY || process.env.LLM_API_KEY || "",
-    apiUrl: process.env.LLM_API_URL || "http://localhost:8080",
+    // Default endpoint from LLM_API_URL; may be overridden at runtime via
+    // PUT /api/admin/llm/endpoint. Keep this fallback in sync with .env.example.
+    apiUrl: process.env.LLM_API_URL || "http://localhost:5814",
   },
 
   // API configuration

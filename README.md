@@ -67,7 +67,7 @@ If using the local `llama` provider, spin up the local model runner from the roo
 ./start-llama-server.ps1
 ```
 
-_This script will automatically download the 1.7GB Llama-3.2-1B GGUF model if it is not cached in `C:\Models`, then expose the server at `http://localhost:8080`._
+_This script will automatically download the 1.7GB Llama-3.2-1B GGUF model if it is not cached in `C:\Hub\Models`, then expose the server at `http://localhost:8080`._
 
 ### 2. Configure Environment Variables
 
@@ -75,9 +75,14 @@ Copy `.env.example` to `.env` and set up your active provider:
 
 ```ini
 LLM_PROVIDER=llama # Options: llama, openai, anthropic
-LLM_API_URL=http://localhost:8080
+LLM_API_URL=http://localhost:5814 # model-hub default; use 8080 for start-llama-server.ps1
 LLM_MODEL=llama-3.2-1b
 ```
+
+`LLM_API_URL` is the default endpoint loaded at startup. It can also be changed
+at runtime from the admin **LLM Monitor** (Endpoint card → _Sửa_), which
+repoints the live LLM adapter without a restart. Runtime changes are not
+persisted — edit `.env` to change the default.
 
 ### 3. Initialize Data
 
