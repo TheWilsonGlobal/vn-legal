@@ -1237,7 +1237,7 @@ export async function adminRoutes(
           }
         } else if (provider === "anthropic") {
           status = config.llm.apiKey ? "connected" : "disconnected";
-        } else if (provider === "openai") {
+        } else if (provider === "openai" || provider === "gemini") {
           status = config.llm.apiKey ? "connected" : "disconnected";
         }
       }
@@ -1247,8 +1247,9 @@ export async function adminRoutes(
         model,
         apiUrl,
         defaultApiUrl: DEFAULT_LLM_API_URL,
-        // Only the llama/openai adapters are addressed by URL.
-        editableEndpoint: provider === "llama" || provider === "openai",
+        // Only the llama/openai/gemini adapters are addressed by URL.
+        editableEndpoint:
+          provider === "llama" || provider === "openai" || provider === "gemini",
         status,
         useLlm,
       });

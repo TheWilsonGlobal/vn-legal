@@ -1,2 +1,11 @@
 packages:
   - "apps/*"
+
+overrides:
+  congraph-rag>congraphdb: 0.2.1
+
+allowBuilds:
+  esbuild: true
+  onnxruntime-node: true
+  protobufjs: true
+  sharp: true

@@ -14,7 +14,7 @@ import logger from "../shared/logger";
 // ----------------------------------------------------------------------------
 
 export interface LLMAdapterOptions {
-  provider?: "template" | "anthropic" | "openai" | "llama";
+  provider?: "template" | "anthropic" | "openai" | "llama" | "gemini";
   apiKey?: string;
   model?: string;
   temperature?: number;
@@ -384,9 +384,15 @@ export class OpenAILLMAdapter extends BaseLLM {
 
   async generate(
     prompt: string,
-    _options?: Record<string, unknown>,
+    options?: Record<string, unknown>,
   ): Promise<LLMResponse> {
     try {
+      const messages: Array<{ role: string; content: string }> = [];
+      if (options?.systemPrompt && typeof options.systemPrompt === "string") {
+        messages.push({ role: "system", content: options.systemPrompt });
+      }
+      messages.push({ role: "user", content: prompt });
+
       const response = await fetch(`${this.apiUrl}/chat/completions`, {
         method: "POST",
         headers: {
@@ -395,7 +401,7 @@ export class OpenAILLMAdapter extends BaseLLM {
         },
         body: JSON.stringify({
           model: this.model,
-          messages: [{ role: "user", content: prompt }],
+          messages,
           temperature: this.options.temperature ?? 0.3,
           max_tokens: this.options.maxTokens || 2000,
         }),
@@ -425,9 +431,15 @@ export class OpenAILLMAdapter extends BaseLLM {
 
   async *stream(
     prompt: string,
-    _options?: Record<string, unknown>,
+    options?: Record<string, unknown>,
   ): AsyncIterable<string> {
     try {
+      const messages: Array<{ role: string; content: string }> = [];
+      if (options?.systemPrompt && typeof options.systemPrompt === "string") {
+        messages.push({ role: "system", content: options.systemPrompt });
+      }
+      messages.push({ role: "user", content: prompt });
+
       const response = await fetch(`${this.apiUrl}/chat/completions`, {
         method: "POST",
         headers: {
@@ -436,7 +448,7 @@ export class OpenAILLMAdapter extends BaseLLM {
         },
         body: JSON.stringify({
           model: this.model,
-          messages: [{ role: "user", content: prompt }],
+          messages,
           temperature: this.options.temperature ?? 0.3,
           max_tokens: this.options.maxTokens || 2000,
           stream: true,
@@ -530,6 +542,13 @@ export function createLLMAdapter(
       );
     case "llama":
       return new LlamaLLMAdapter(apiUrl || "http://localhost:5814", options);
+    case "gemini":
+      return new OpenAILLMAdapter(
+        apiKey || "",
+        model || "gemini-3.5-flash-lite",
+        apiUrl || "https://generativelanguage.googleapis.com/v1beta/openai",
+        options,
+      );
     case "template":
     default:
       return new TemplateLLMAdapter(embedder, options);

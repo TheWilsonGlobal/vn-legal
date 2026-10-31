@@ -61,14 +61,29 @@ export const config = {
       | "anthropic"
       | "llama"
       | "openai"
+      | "gemini"
       | "template",
-    model: process.env.LLM_MODEL || "claude-3-haiku-20240307",
+    model:
+      process.env.GEMINI_MODEL_NAME ||
+      process.env.LLM_MODEL ||
+      (process.env.LLM_PROVIDER === "gemini"
+        ? "gemini-3.5-flash-lite"
+        : "claude-3-haiku-20240307"),
     temperature: 0.3,
     maxTokens: 2000,
-    apiKey: process.env.ANTHROPIC_API_KEY || process.env.LLM_API_KEY || "",
+    apiKey:
+      process.env.GEMINI_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY ||
+      process.env.LLM_API_KEY ||
+      "",
     // Default endpoint from LLM_API_URL; may be overridden at runtime via
     // PUT /api/admin/llm/endpoint. Keep this fallback in sync with .env.example.
-    apiUrl: process.env.LLM_API_URL || "http://localhost:5814",
+    apiUrl:
+      process.env.LLM_API_URL ||
+      (process.env.LLM_PROVIDER === "gemini"
+        ? "https://generativelanguage.googleapis.com/v1beta/openai"
+        : "http://localhost:5814"),
   },
 
   // API configuration
