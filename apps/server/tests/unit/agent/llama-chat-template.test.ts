@@ -113,7 +113,9 @@ describe("LlamaLLMAdapter prompt template", () => {
     });
 
     it("ignores a non-string systemPrompt instead of sending a bogus system turn", async () => {
-      await adapter.generate("câu hỏi", { systemPrompt: { nope: true } as any });
+      await adapter.generate("câu hỏi", {
+        systemPrompt: { nope: true } as any,
+      });
 
       const { body } = lastRequest(fetchMock);
       expect(body.messages).toEqual([{ role: "user", content: "câu hỏi" }]);
@@ -245,13 +247,15 @@ describe("LlamaLLMAdapter prompt template", () => {
     it("yields tokens from the OpenAI choices[].delta.content shape", async () => {
       vi.stubGlobal(
         "fetch",
-        vi.fn().mockResolvedValue(
-          sseResponse([
-            'data: {"choices":[{"delta":{"content":"Điều "}}]}\n',
-            'data: {"choices":[{"delta":{"content":"209"}}]}\n',
-            "data: [DONE]\n",
-          ]),
-        ),
+        vi
+          .fn()
+          .mockResolvedValue(
+            sseResponse([
+              'data: {"choices":[{"delta":{"content":"Điều "}}]}\n',
+              'data: {"choices":[{"delta":{"content":"209"}}]}\n',
+              "data: [DONE]\n",
+            ]),
+          ),
       );
 
       const chunks = await collect(new LlamaLLMAdapter(API_URL).stream("q"));

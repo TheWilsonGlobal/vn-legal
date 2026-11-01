@@ -3,8 +3,9 @@
 // ============================================================================
 // Combines PathRAG and MSGraphRAG engines for comprehensive legal retrieval
 
-import { IStorage, BaseLLM } from "congraph-rag/core";
+import { IStorage, BaseLLM, Entity } from "congraph-rag/core";
 import type { IEmbedder } from "../embeddings/embedder-factory";
+import type { EmbeddingSearchable } from "../storage-adapters/congraph-rag-adapter";
 import type {
   LegalContextBundle,
   SeedArticle,
@@ -38,6 +39,16 @@ export class HybridRetrieval {
     // Initialize ConGraphRAG engines
     this.pathRAG = createPathRAG(storage, llm);
     this.graphRAG = createGraphRAG(storage, llm);
+  }
+
+  /** Vector seeding needs the adapter's extra method. Without it, seeding is skipped. */
+  private async searchByEmbedding(embedding: number[], limit: number): Promise<Entity[]> {
+    const storage = this.storage as IStorage & Partial<EmbeddingSearchable>;
+    if (typeof storage.searchEntitiesByEmbedding !== "function") {
+      logger.warn("Storage has no searchEntitiesByEmbedding; vector seeding skipped");
+      return [];
+    }
+    return storage.searchEntitiesByEmbedding(embedding, limit);
   }
 
   /**
@@ -253,7 +264,7 @@ export class HybridRetrieval {
     const queryVector = await this.embedder!.embed(query);
 
     // Use storage to search by embedding
-    const entities = await this.storage.searchEntitiesByEmbedding(
+    const entities = await this.searchByEmbedding(
       queryVector,
       limit,
     );
@@ -294,7 +305,7 @@ export class HybridRetrieval {
     logger.debug(`Finding seed clauses for query: "${query}"`);
 
     const queryVector = await this.embedder!.embed(query);
-    const entities = await this.storage.searchEntitiesByEmbedding(
+    const entities = await this.searchByEmbedding(
       queryVector,
       100, // Search even more to ensure we get clauses
     );

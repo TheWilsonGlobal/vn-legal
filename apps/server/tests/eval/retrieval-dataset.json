@@ -1,0 +1,82 @@
+[
+  {
+    "id": "validity-cond",
+    "question": "Điều kiện có hiệu lực của giao dịch dân sự là gì?",
+    "expected": [117]
+  },
+  {
+    "id": "form",
+    "question": "Hình thức của giao dịch dân sự",
+    "expected": [119]
+  },
+  {
+    "id": "void-fake",
+    "question": "Giao dịch dân sự vô hiệu do giả tạo",
+    "expected": [124]
+  },
+  {
+    "id": "void-consequence",
+    "question": "Hậu quả pháp lý của giao dịch dân sự vô hiệu",
+    "expected": [131]
+  },
+  {
+    "id": "legal-capacity",
+    "question": "Năng lực pháp luật dân sự của cá nhân",
+    "expected": [16]
+  },
+  {
+    "id": "representation-term",
+    "question": "Thời hạn đại diện",
+    "expected": [140]
+  },
+  {
+    "id": "contract-limitation",
+    "question": "Thời hiệu khởi kiện về hợp đồng",
+    "expected": [429]
+  },
+  {
+    "id": "inheritance-limitation",
+    "question": "Thời hiệu thừa kế",
+    "expected": [623]
+  },
+  {
+    "id": "disinherit",
+    "question": "Người không được quyền hưởng di sản",
+    "expected": [621]
+  },
+  {
+    "id": "statutory-heirs",
+    "question": "Những trường hợp thừa kế theo pháp luật",
+    "expected": [650]
+  },
+  {
+    "id": "will-maker",
+    "question": "Người lập di chúc có quyền gì",
+    "expected": [625, 626]
+  },
+  {
+    "id": "sale-contract",
+    "question": "Hợp đồng mua bán tài sản",
+    "expected": [430]
+  },
+  {
+    "id": "high-danger-damage",
+    "question": "Bồi thường thiệt hại do nguồn nguy hiểm cao độ gây ra",
+    "expected": [601]
+  },
+  {
+    "id": "unauthorised-work",
+    "question": "Thực hiện công việc không có ủy quyền",
+    "expected": [574]
+  },
+  {
+    "id": "obligation-security",
+    "question": "Biện pháp bảo đảm thực hiện nghĩa vụ",
+    "expected": [292]
+  },
+  {
+    "id": "ownership-protection",
+    "question": "Bảo vệ quyền sở hữu tài sản",
+    "expected": [163]
+  }
+]

@@ -7,14 +7,46 @@ import type {
   IStorage,
   Entity,
   Chunk,
-  Fact,
   Community,
+  CommunityScope,
   Document,
+  EntityGraph,
   Relationship,
 } from "congraph-rag/core";
 import type { GraphClient } from "../graph/client";
 import type { IVectorStore } from "../embeddings/vector-store-factory";
 import logger from "../shared/logger";
+
+// Edge and node labels this adapter writes beyond the ones the graph client already knows.
+const COVERS_CLAUSE = "COVERS_CLAUSE";
+const REFERENCES = "REFERENCES";
+const COMMUNITY_RUN = "CommunityRun";
+
+/** Vector search is an extra on this adapter. congraph-rag's IStorage does not define it. */
+export interface EmbeddingSearchable {
+  searchEntitiesByEmbedding(embedding: number[], limit: number): Promise<Entity[]>;
+}
+
+function toChunk(node: any): Chunk {
+  return {
+    id: node.id,
+    content: node.text ?? "",
+    sourceId: node.article_id ?? "",
+    sequenceOrder: Number(node.sequence_order ?? 0),
+  };
+}
+
+function keywordsOf(query: string): string[] {
+  return query
+    .split(/\s+/)
+    .map((k) => k.toLowerCase().trim())
+    .filter((k) => k.length >= 2);
+}
+
+function keywordScore(text: string, keywords: string[]): number {
+  const lower = text.toLowerCase();
+  return keywords.filter((kw) => lower.includes(kw)).length;
+}
 
 // ============================================================================
 // ConGraphRAG Storage Adapter
@@ -219,14 +251,58 @@ export class ConGraphStorageAdapter implements IStorage {
     }
   }
 
-  // ----------------------------------------------------------------------------
-  // Fact Operations
-  // ----------------------------------------------------------------------------
+  async getChunk(id: string): Promise<Chunk | null> {
+    try {
+      const node = await this.graph.getNode("Clause", id);
+      return node ? toChunk(node) : null;
+    } catch (error) {
+      logger.error(`Failed to get chunk ${id}:`, error);
+      return null;
+    }
+  }
 
-  async saveFact(fact: Fact): Promise<void> {
-    // Facts are stored as metadata in the graph
-    logger.debug(`Saving fact ${fact.id} for chunk ${fact.chunkId}`);
-    // No-op for now - facts can be stored as node metadata
+  async listChunks(): Promise<Chunk[]> {
+    try {
+      const nodes = await this.graph.getNodesByType("Clause");
+      return nodes.map(toChunk);
+    } catch (error) {
+      logger.error("Failed to list chunks:", error);
+      return [];
+    }
+  }
+
+  async searchChunks(query: string, limit: number): Promise<Chunk[]> {
+    try {
+      const keywords = keywordsOf(query);
+      if (keywords.length === 0) return [];
+
+      const nodes = await this.graph.getNodesByType("Clause");
+      return nodes
+        .map((node) => ({
+          chunk: toChunk(node),
+          score: keywordScore(node.text ?? "", keywords),
+        }))
+        .filter((s) => s.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit)
+        .map((s) => s.chunk);
+    } catch (error) {
+      logger.error(`Failed to search chunks for query "${query}":`, error);
+      return [];
+    }
+  }
+
+  async getChunksByCommunity(communityId: string): Promise<Chunk[]> {
+    try {
+      const edges = await this.graph.getOutgoingEdges(communityId, COVERS_CLAUSE);
+      const nodes = await Promise.all(
+        edges.map((edge) => this.graph.getNode("Clause", edge.to)),
+      );
+      return nodes.filter((n) => n !== null).map(toChunk);
+    } catch (error) {
+      logger.error(`Failed to get chunks for community ${communityId}:`, error);
+      return [];
+    }
   }
 
   // ----------------------------------------------------------------------------
@@ -240,8 +316,8 @@ export class ConGraphStorageAdapter implements IStorage {
         level: community.level,
         title: community.title,
         summary: community.summary,
-        parent_id: community.parentId,
         findings: findingsStr,
+        run_id: community.runId,
       });
     } catch (error) {
       logger.error(`Failed to save community ${community.id}:`, error);
@@ -259,8 +335,8 @@ export class ConGraphStorageAdapter implements IStorage {
         level: node.level,
         title: node.title,
         summary: node.summary,
-        parentId: node.parent_id,
         entityIds: node.findings?.split(",") || [],
+        runId: node.run_id ?? undefined,
       };
     } catch (error) {
       logger.error(`Failed to get community ${id}:`, error);
@@ -268,18 +344,26 @@ export class ConGraphStorageAdapter implements IStorage {
     }
   }
 
-  async getCommunitiesByLevel(level: number): Promise<Community[]> {
+  async getCommunitiesByLevel(
+    level: number,
+    scope: CommunityScope = "clusters",
+  ): Promise<Community[]> {
     try {
+      const activeRun = await this.activeRunId(scope);
       const nodes = await this.graph.getNodesByType("Community");
+      // Communities written without a run (the builder's output) are always visible.
+      // Scope is not stored on community nodes, so a run-stamped community from
+      // another scope is hidden while a run is active here.
       return nodes
         .filter((n) => n.level === level)
+        .filter((n) => activeRun === null || !n.run_id || n.run_id === activeRun)
         .map((n) => ({
           id: n.id,
           level: n.level,
           title: n.title,
           summary: n.summary,
-          parentId: n.parent_id,
           entityIds: n.findings?.split(",") || [],
+          runId: n.run_id ?? undefined,
         }));
     } catch (error) {
       logger.error(`Failed to get communities at level ${level}:`, error);
@@ -407,9 +491,25 @@ export class ConGraphStorageAdapter implements IStorage {
     }
   }
 
-  async linkChunkToFact(chunkId: string, factId: string): Promise<void> {
-    // No-op for now
-    logger.debug(`Linking chunk ${chunkId} to fact ${factId}`);
+  async linkCommunityToChunk(communityId: string, chunkId: string): Promise<void> {
+    try {
+      await this.graph.addEdge({
+        from: communityId,
+        to: chunkId,
+        type: COVERS_CLAUSE,
+        weight: 1.0,
+      });
+    } catch (error) {
+      logger.error(
+        `Failed to link community ${communityId} to chunk ${chunkId}:`,
+        error,
+      );
+    }
+  }
+
+  async linkDocumentToChunk(docId: string, chunkId: string): Promise<void> {
+    // Documents are not stored in the graph (see saveDocument)
+    logger.debug(`Document ${docId} not linked to chunk ${chunkId}: documents are not stored`);
   }
 
   // ----------------------------------------------------------------------------
@@ -543,6 +643,61 @@ export class ConGraphStorageAdapter implements IStorage {
   ): Promise<Map<string, number>> {
     logger.warn(`runPageRank not fully implemented, returning empty map`);
     return new Map();
+  }
+
+  // ----------------------------------------------------------------------------
+  // Community runs and entity graph (community detection input)
+  // ----------------------------------------------------------------------------
+
+  newCommunityRunId(): string {
+    return `run-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  /**
+   * Record a run as the active one for a scope. Each activation is a new node,
+   * because addNode only creates; the newest activation for a scope wins.
+   */
+  async activateCommunityRun(
+    runId: string,
+    scope: CommunityScope = "clusters",
+  ): Promise<void> {
+    const activatedAt = new Date().toISOString();
+    await this.graph.addNode(COMMUNITY_RUN, `activation-${scope}-${activatedAt}-${runId}`, {
+      run_id: runId,
+      scope,
+      activated_at: activatedAt,
+    });
+  }
+
+  private async activeRunId(scope: CommunityScope): Promise<string | null> {
+    const activations = (await this.graph.getNodesByType(COMMUNITY_RUN)).filter(
+      (n) => n.scope === scope,
+    );
+    if (activations.length === 0) return null;
+    activations.sort((a, b) =>
+      String(b.activated_at).localeCompare(String(a.activated_at)),
+    );
+    return activations[0].run_id ?? null;
+  }
+
+  async loadEntityGraph(): Promise<EntityGraph> {
+    const nodes = (await this.graph.getNodesByType("Article")).map((n) => n.id || n._id);
+    const known = new Set(nodes);
+    const seen = new Set<string>();
+    const edges: EntityGraph["edges"] = [];
+
+    for (const id of nodes) {
+      const outgoing = await this.graph.getOutgoingEdges(id, REFERENCES);
+      for (const edge of outgoing) {
+        if (!known.has(edge.to) || edge.to === id) continue;
+        const key = [id, edge.to].sort().join("|");
+        if (seen.has(key)) continue;
+        seen.add(key);
+        edges.push({ source: id, target: edge.to, weight: Number(edge.weight ?? 1) });
+      }
+    }
+
+    return { nodes, edges };
   }
 }
 

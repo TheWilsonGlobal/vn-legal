@@ -16,6 +16,12 @@ vi.mock("../src/shared/config", () => ({
   config: {
     graphDbPath: "/test/db/path",
     vectorDbPath: "/test/vectors",
+    // Mirrors shared/config.ts. The embedder reads these; without them the
+    // transformers pipeline is called with no model name and fails to load.
+    embeddingModel: "Xenova/paraphrase-multilingual-MiniLM-L12-v2",
+    embeddingDimension: 384,
+    embeddingBackend: "transformers",
+    embeddingApiUrl: "http://127.0.0.1:8765",
     api: {
       port: 3000,
       host: "127.0.0.1",

@@ -9,3 +9,6 @@ allowBuilds:
   onnxruntime-node: true
   protobufjs: true
   sharp: true
+
+minimumReleaseAgeExclude:
+  - congraph-rag@0.2.1

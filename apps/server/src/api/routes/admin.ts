@@ -1249,7 +1249,9 @@ export async function adminRoutes(
         defaultApiUrl: DEFAULT_LLM_API_URL,
         // Only the llama/openai/gemini adapters are addressed by URL.
         editableEndpoint:
-          provider === "llama" || provider === "openai" || provider === "gemini",
+          provider === "llama" ||
+          provider === "openai" ||
+          provider === "gemini",
         status,
         useLlm,
       });

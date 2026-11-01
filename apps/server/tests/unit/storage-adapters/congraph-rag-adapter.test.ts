@@ -227,16 +227,133 @@ describe("ConGraphStorageAdapter", () => {
     });
   });
 
-  describe("saveFact", () => {
-    it("should not throw (no-op)", async () => {
-      await expect(
-        adapter.saveFact({
-          id: "f1",
-          chunkId: "c1",
-          content: "fact",
-          metadata: {},
-        }),
-      ).resolves.toBeUndefined();
+  describe("getChunk", () => {
+    it("should map a Clause node to a chunk", async () => {
+      mockGraph.getNode.mockResolvedValue({
+        id: "c1",
+        text: "Clause text",
+        article_id: "a1",
+        sequence_order: 2,
+      });
+      await expect(adapter.getChunk("c1")).resolves.toEqual({
+        id: "c1",
+        content: "Clause text",
+        sourceId: "a1",
+        sequenceOrder: 2,
+      });
+      expect(mockGraph.getNode).toHaveBeenCalledWith("Clause", "c1");
+    });
+
+    it("should return null when the clause is missing", async () => {
+      mockGraph.getNode.mockResolvedValue(null);
+      await expect(adapter.getChunk("missing")).resolves.toBeNull();
+    });
+  });
+
+  describe("searchChunks", () => {
+    it("should rank clauses by keyword hits and respect the limit", async () => {
+      mockGraph.getNodesByType.mockResolvedValue([
+        { id: "c1", text: "hợp đồng mua bán", article_id: "a1", sequence_order: 0 },
+        { id: "c2", text: "hợp đồng và thừa kế", article_id: "a2", sequence_order: 0 },
+        { id: "c3", text: "không liên quan", article_id: "a3", sequence_order: 0 },
+      ]);
+      const results = await adapter.searchChunks("hợp đồng mua", 1);
+      expect(results.map((c) => c.id)).toEqual(["c1"]);
+    });
+
+    it("should return empty for queries with no usable keywords", async () => {
+      await expect(adapter.searchChunks("a", 5)).resolves.toEqual([]);
+    });
+  });
+
+  describe("linkCommunityToChunk", () => {
+    it("should add a COVERS_CLAUSE edge", async () => {
+      await adapter.linkCommunityToChunk("comm1", "c1");
+      expect(mockGraph.addEdge).toHaveBeenCalledWith({
+        from: "comm1",
+        to: "c1",
+        type: "COVERS_CLAUSE",
+        weight: 1.0,
+      });
+    });
+  });
+
+  describe("community runs", () => {
+    it("should return communities from every run when none is active", async () => {
+      mockGraph.getNodesByType.mockImplementation(async (type: string) =>
+        type === "Community"
+          ? [
+              { id: "k1", level: 0, findings: "a,b", run_id: "run-old" },
+              { id: "k2", level: 0, findings: "c" },
+            ]
+          : [],
+      );
+      const result = await adapter.getCommunitiesByLevel(0);
+      expect(result.map((c) => c.id)).toEqual(["k1", "k2"]);
+    });
+
+    it("should hide run-stamped communities that are not in the active run", async () => {
+      mockGraph.getNodesByType.mockImplementation(async (type: string) => {
+        if (type === "CommunityRun") {
+          return [
+            { scope: "clusters", run_id: "run-old", activated_at: "2026-01-01T00:00:00.000Z" },
+            { scope: "clusters", run_id: "run-new", activated_at: "2026-02-01T00:00:00.000Z" },
+          ];
+        }
+        if (type === "Community") {
+          return [
+            { id: "old", level: 0, findings: "", run_id: "run-old" },
+            { id: "new", level: 0, findings: "", run_id: "run-new" },
+            { id: "legacy", level: 0, findings: "" },
+          ];
+        }
+        return [];
+      });
+      const result = await adapter.getCommunitiesByLevel(0, "clusters");
+      expect(result.map((c) => c.id)).toEqual(["new", "legacy"]);
+    });
+
+    it("should write the run id onto saved communities", async () => {
+      await adapter.saveCommunity({
+        id: "k1",
+        level: 0,
+        title: "t",
+        summary: "s",
+        entityIds: ["a"],
+        runId: "run-1",
+      });
+      expect(mockGraph.addNode).toHaveBeenCalledWith(
+        "Community",
+        "k1",
+        expect.objectContaining({ run_id: "run-1" }),
+      );
+    });
+
+    it("should create a distinct run id on each call", () => {
+      expect(adapter.newCommunityRunId()).not.toBe(adapter.newCommunityRunId());
+    });
+
+    it("should record an activation node for the scope", async () => {
+      await adapter.activateCommunityRun("run-1", "tree");
+      expect(mockGraph.addNode).toHaveBeenCalledWith(
+        "CommunityRun",
+        expect.stringContaining("activation-tree-"),
+        expect.objectContaining({ run_id: "run-1", scope: "tree" }),
+      );
+    });
+  });
+
+  describe("loadEntityGraph", () => {
+    it("should return article nodes and undirected reference edges once each", async () => {
+      mockGraph.getNodesByType.mockResolvedValue([{ id: "a1" }, { id: "a2" }]);
+      mockGraph.getOutgoingEdges.mockImplementation(async (id: string) =>
+        id === "a1"
+          ? [{ from: "a1", to: "a2", weight: 2 }, { from: "a1", to: "x9", weight: 1 }]
+          : [{ from: "a2", to: "a1", weight: 2 }],
+      );
+      const graph = await adapter.loadEntityGraph();
+      expect(graph.nodes).toEqual(["a1", "a2"]);
+      expect(graph.edges).toEqual([{ source: "a1", target: "a2", weight: 2 }]);
     });
   });
 
@@ -423,14 +540,6 @@ describe("ConGraphStorageAdapter", () => {
           type: "CONTAINS",
         }),
       );
-    });
-  });
-
-  describe("linkChunkToFact", () => {
-    it("should not throw (no-op)", async () => {
-      await expect(
-        adapter.linkChunkToFact("c1", "f1"),
-      ).resolves.toBeUndefined();
     });
   });
 
