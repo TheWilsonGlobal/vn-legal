@@ -253,9 +253,24 @@ describe("ConGraphStorageAdapter", () => {
   describe("searchChunks", () => {
     it("should rank clauses by keyword hits and respect the limit", async () => {
       mockGraph.getNodesByType.mockResolvedValue([
-        { id: "c1", text: "hợp đồng mua bán", article_id: "a1", sequence_order: 0 },
-        { id: "c2", text: "hợp đồng và thừa kế", article_id: "a2", sequence_order: 0 },
-        { id: "c3", text: "không liên quan", article_id: "a3", sequence_order: 0 },
+        {
+          id: "c1",
+          text: "hợp đồng mua bán",
+          article_id: "a1",
+          sequence_order: 0,
+        },
+        {
+          id: "c2",
+          text: "hợp đồng và thừa kế",
+          article_id: "a2",
+          sequence_order: 0,
+        },
+        {
+          id: "c3",
+          text: "không liên quan",
+          article_id: "a3",
+          sequence_order: 0,
+        },
       ]);
       const results = await adapter.searchChunks("hợp đồng mua", 1);
       expect(results.map((c) => c.id)).toEqual(["c1"]);
@@ -296,8 +311,16 @@ describe("ConGraphStorageAdapter", () => {
       mockGraph.getNodesByType.mockImplementation(async (type: string) => {
         if (type === "CommunityRun") {
           return [
-            { scope: "clusters", run_id: "run-old", activated_at: "2026-01-01T00:00:00.000Z" },
-            { scope: "clusters", run_id: "run-new", activated_at: "2026-02-01T00:00:00.000Z" },
+            {
+              scope: "clusters",
+              run_id: "run-old",
+              activated_at: "2026-01-01T00:00:00.000Z",
+            },
+            {
+              scope: "clusters",
+              run_id: "run-new",
+              activated_at: "2026-02-01T00:00:00.000Z",
+            },
           ];
         }
         if (type === "Community") {
@@ -348,7 +371,10 @@ describe("ConGraphStorageAdapter", () => {
       mockGraph.getNodesByType.mockResolvedValue([{ id: "a1" }, { id: "a2" }]);
       mockGraph.getOutgoingEdges.mockImplementation(async (id: string) =>
         id === "a1"
-          ? [{ from: "a1", to: "a2", weight: 2 }, { from: "a1", to: "x9", weight: 1 }]
+          ? [
+              { from: "a1", to: "a2", weight: 2 },
+              { from: "a1", to: "x9", weight: 1 },
+            ]
           : [{ from: "a2", to: "a1", weight: 2 }],
       );
       const graph = await adapter.loadEntityGraph();

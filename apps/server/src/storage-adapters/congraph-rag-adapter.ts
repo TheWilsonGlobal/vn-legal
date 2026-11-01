@@ -24,7 +24,10 @@ const COMMUNITY_RUN = "CommunityRun";
 
 /** Vector search is an extra on this adapter. congraph-rag's IStorage does not define it. */
 export interface EmbeddingSearchable {
-  searchEntitiesByEmbedding(embedding: number[], limit: number): Promise<Entity[]>;
+  searchEntitiesByEmbedding(
+    embedding: number[],
+    limit: number,
+  ): Promise<Entity[]>;
 }
 
 function toChunk(node: any): Chunk {
@@ -294,7 +297,10 @@ export class ConGraphStorageAdapter implements IStorage {
 
   async getChunksByCommunity(communityId: string): Promise<Chunk[]> {
     try {
-      const edges = await this.graph.getOutgoingEdges(communityId, COVERS_CLAUSE);
+      const edges = await this.graph.getOutgoingEdges(
+        communityId,
+        COVERS_CLAUSE,
+      );
       const nodes = await Promise.all(
         edges.map((edge) => this.graph.getNode("Clause", edge.to)),
       );
@@ -356,7 +362,9 @@ export class ConGraphStorageAdapter implements IStorage {
       // another scope is hidden while a run is active here.
       return nodes
         .filter((n) => n.level === level)
-        .filter((n) => activeRun === null || !n.run_id || n.run_id === activeRun)
+        .filter(
+          (n) => activeRun === null || !n.run_id || n.run_id === activeRun,
+        )
         .map((n) => ({
           id: n.id,
           level: n.level,
@@ -491,7 +499,10 @@ export class ConGraphStorageAdapter implements IStorage {
     }
   }
 
-  async linkCommunityToChunk(communityId: string, chunkId: string): Promise<void> {
+  async linkCommunityToChunk(
+    communityId: string,
+    chunkId: string,
+  ): Promise<void> {
     try {
       await this.graph.addEdge({
         from: communityId,
@@ -509,7 +520,9 @@ export class ConGraphStorageAdapter implements IStorage {
 
   async linkDocumentToChunk(docId: string, chunkId: string): Promise<void> {
     // Documents are not stored in the graph (see saveDocument)
-    logger.debug(`Document ${docId} not linked to chunk ${chunkId}: documents are not stored`);
+    logger.debug(
+      `Document ${docId} not linked to chunk ${chunkId}: documents are not stored`,
+    );
   }
 
   // ----------------------------------------------------------------------------
@@ -662,11 +675,15 @@ export class ConGraphStorageAdapter implements IStorage {
     scope: CommunityScope = "clusters",
   ): Promise<void> {
     const activatedAt = new Date().toISOString();
-    await this.graph.addNode(COMMUNITY_RUN, `activation-${scope}-${activatedAt}-${runId}`, {
-      run_id: runId,
-      scope,
-      activated_at: activatedAt,
-    });
+    await this.graph.addNode(
+      COMMUNITY_RUN,
+      `activation-${scope}-${activatedAt}-${runId}`,
+      {
+        run_id: runId,
+        scope,
+        activated_at: activatedAt,
+      },
+    );
   }
 
   private async activeRunId(scope: CommunityScope): Promise<string | null> {
@@ -681,7 +698,9 @@ export class ConGraphStorageAdapter implements IStorage {
   }
 
   async loadEntityGraph(): Promise<EntityGraph> {
-    const nodes = (await this.graph.getNodesByType("Article")).map((n) => n.id || n._id);
+    const nodes = (await this.graph.getNodesByType("Article")).map(
+      (n) => n.id || n._id,
+    );
     const known = new Set(nodes);
     const seen = new Set<string>();
     const edges: EntityGraph["edges"] = [];
@@ -693,7 +712,11 @@ export class ConGraphStorageAdapter implements IStorage {
         const key = [id, edge.to].sort().join("|");
         if (seen.has(key)) continue;
         seen.add(key);
-        edges.push({ source: id, target: edge.to, weight: Number(edge.weight ?? 1) });
+        edges.push({
+          source: id,
+          target: edge.to,
+          weight: Number(edge.weight ?? 1),
+        });
       }
     }
 

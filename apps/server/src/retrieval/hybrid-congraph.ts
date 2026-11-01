@@ -42,10 +42,15 @@ export class HybridRetrieval {
   }
 
   /** Vector seeding needs the adapter's extra method. Without it, seeding is skipped. */
-  private async searchByEmbedding(embedding: number[], limit: number): Promise<Entity[]> {
+  private async searchByEmbedding(
+    embedding: number[],
+    limit: number,
+  ): Promise<Entity[]> {
     const storage = this.storage as IStorage & Partial<EmbeddingSearchable>;
     if (typeof storage.searchEntitiesByEmbedding !== "function") {
-      logger.warn("Storage has no searchEntitiesByEmbedding; vector seeding skipped");
+      logger.warn(
+        "Storage has no searchEntitiesByEmbedding; vector seeding skipped",
+      );
       return [];
     }
     return storage.searchEntitiesByEmbedding(embedding, limit);
@@ -264,10 +269,7 @@ export class HybridRetrieval {
     const queryVector = await this.embedder!.embed(query);
 
     // Use storage to search by embedding
-    const entities = await this.searchByEmbedding(
-      queryVector,
-      limit,
-    );
+    const entities = await this.searchByEmbedding(queryVector, limit);
 
     // Convert to SeedArticle format
     const seedArticles: SeedArticle[] = [];
