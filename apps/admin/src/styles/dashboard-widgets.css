@@ -1,0 +1,220 @@
+/* Mock Chart / Graph */
+.chart-placeholder {
+  height: 300px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.mock-chart {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+
+.mock-chart .node {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--accent-blue);
+  box-shadow: 0 0 20px var(--accent-blue);
+}
+
+.mock-chart .node.central {
+  width: 30px;
+  height: 30px;
+  left: 85px;
+  top: 85px;
+}
+
+.mock-chart .node.c1 {
+  width: 15px;
+  height: 15px;
+  left: 20px;
+  top: 40px;
+  background: var(--accent-purple);
+  box-shadow: 0 0 15px var(--accent-purple);
+}
+.mock-chart .node.c2 {
+  width: 15px;
+  height: 15px;
+  right: 20px;
+  top: 50px;
+  background: var(--accent-green);
+  box-shadow: 0 0 15px var(--accent-green);
+}
+.mock-chart .node.c3 {
+  width: 15px;
+  height: 15px;
+  left: 60px;
+  bottom: 20px;
+}
+
+.mock-chart .edge {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.1);
+  transform-origin: left center;
+}
+
+.mock-chart .edge.e1 {
+  width: 80px;
+  height: 1px;
+  left: 100px;
+  top: 100px;
+  transform: rotate(-140deg);
+}
+.mock-chart .edge.e2 {
+  width: 70px;
+  height: 1px;
+  left: 100px;
+  top: 100px;
+  transform: rotate(-20deg);
+}
+.mock-chart .edge.e3 {
+  width: 60px;
+  height: 1px;
+  left: 100px;
+  top: 100px;
+  transform: rotate(60deg);
+}
+
+.graph-details {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-item span:first-child {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.detail-item .val {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Activity List */
+.activity-list {
+  list-style: none;
+}
+
+.activity-item {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.activity-marker {
+  width: 2px;
+  height: 40px;
+  border-radius: 2px;
+  position: relative;
+}
+
+.activity-marker::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: inherit;
+}
+
+.activity-marker.blue {
+  background-color: var(--accent-blue);
+}
+.activity-marker.green {
+  background-color: var(--accent-green);
+}
+.activity-marker.orange {
+  background-color: var(--accent-orange);
+}
+
+.activity-details p {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.activity-details span {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* New View Styles */
+.view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.view-header h2 {
+  font-size: 24px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: 10px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 13px;
+}
+
+.data-table th {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+}
+
+.data-table tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.data-table tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}

@@ -9,6 +9,9 @@ allowBuilds:
   onnxruntime-node: true
   protobufjs: true
   sharp: true
+  "@google/genai": false
 
 minimumReleaseAgeExclude:
   - congraph-rag@0.2.1
+  - "@langchain/langgraph@1.7.0"
+  - "@langchain/langgraph-sdk@1.13.0"

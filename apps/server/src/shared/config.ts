@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { config as dotenvConfig } from "dotenv";
 
 // Load .env file
@@ -15,14 +15,75 @@ dotenvConfig({ path: join(__dirname, "../../../.env") });
 // Also try current working directory as a fallback
 dotenvConfig();
 
+// ----------------------------------------------------------------------------
+// Env helpers. Nothing here throws at import: a set-but-unusable value is
+// recorded in `configIssues` (variable name only, never the value), and the
+// value is returned as NaN or false so that it cannot be used silently. The
+// server boot must refuse to start while `configIssues` is non-empty.
+// ----------------------------------------------------------------------------
+
+export const configIssues: string[] = [];
+
+/** Trimmed value, or undefined when the variable is unset or blank. */
+function env(name: string): string | undefined {
+  const raw = process.env[name];
+  if (raw === undefined) return undefined;
+  const trimmed = raw.trim();
+  return trimmed === "" ? undefined : trimmed;
+}
+
+function intEnv(name: string, fallback: number): number {
+  const raw = env(name);
+  if (raw === undefined) return fallback;
+  if (!/^\d+$/.test(raw)) {
+    configIssues.push(`${name} must be a non-negative integer`);
+    return NaN;
+  }
+  return Number(raw);
+}
+
+function unitIntervalEnv(name: string, fallback: number): number {
+  const raw = env(name);
+  if (raw === undefined) return fallback;
+  const n = Number(raw);
+  if (!/^\d*\.?\d+$/.test(raw) || n < 0 || n > 1) {
+    configIssues.push(`${name} must be a number between 0 and 1`);
+    return NaN;
+  }
+  return n;
+}
+
+function boolEnv(name: string): boolean {
+  const raw = env(name);
+  if (raw === undefined) return false;
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  configIssues.push(`${name} must be "true" or "false"`);
+  return false;
+}
+
+function captureEnv(): "full" | "masked" | "metadata_only" {
+  const raw = env("LANGFUSE_CAPTURE");
+  if (raw === undefined) return "metadata_only";
+  if (raw === "full" || raw === "masked" || raw === "metadata_only") return raw;
+  configIssues.push(
+    'LANGFUSE_CAPTURE must be "full", "masked" or "metadata_only"',
+  );
+  return "metadata_only";
+}
+
+const EMBEDDING_PROVIDER = env("EMBEDDING_PROVIDER");
+const EMBEDDING_DIM = intEnv("EMBEDDING_DIM", 768);
+
 export const config = {
   // Database paths
   graphDbPath: join(process.cwd(), "storage", "graph.cgraph"),
   vectorDbPath: join(process.cwd(), "storage", "vectors.lance"),
-  conGraphVectorDbPath: join(
+  // Env-driven (CONGRAPH_VECTOR_DB_PATH). Unset keeps the legacy store path.
+  conGraphVectorDbPath: resolve(
     process.cwd(),
-    "storage",
-    "congraph_vectors.cgraph",
+    env("CONGRAPH_VECTOR_DB_PATH") ??
+      join("storage", "congraph_vectors.cgraph"),
   ),
 
   // Vector store type: "lancedb" or "congraph"
@@ -33,19 +94,35 @@ export const config = {
   // Client graph display mode
   clientGraphMode: "query" as "query" | "explorer",
 
-  // Data source
-  dataSourcePath: join(process.cwd(), "data", "vietnam_civil_law.json"),
+  // Data source (DATA_SOURCE_PATH). Default is the real corpus file.
+  dataSourcePath: resolve(
+    process.cwd(),
+    env("DATA_SOURCE_PATH") ?? join("data", "Docs", "Vietnam Civil Law.json"),
+  ),
 
-  // Embedding model
+  // Embedding model (legacy transformers embedder)
   embeddingModel: "Xenova/paraphrase-multilingual-MiniLM-L12-v2",
-  embeddingDimension: 384,
+  // 768 for the Gemini index (EMBEDDING_DIM); the legacy 384-d store otherwise.
+  embeddingDimension: EMBEDDING_PROVIDER === "gemini" ? EMBEDDING_DIM : 384,
 
   // Embedding backend: "transformers" (WebAssembly), "api" (Python ONNX), or "llamacpp" (GGUF)
+  // Legacy: read only by the old-index comparison (ER1) and the legacy embedder path.
   embeddingBackend: (process.env.EMBEDDING_BACKEND || "transformers") as
     | "transformers"
     | "api"
     | "llamacpp",
   embeddingApiUrl: process.env.EMBEDDING_API_URL || "http://127.0.0.1:8765",
+
+  // Embeddings served by Gemini (agent path). Keys are read here only.
+  embedding: {
+    provider: EMBEDDING_PROVIDER, // EMBEDDING_PROVIDER: no default, undefined when unset
+    model: env("EMBEDDING_MODEL"), // EMBEDDING_MODEL: no default
+    dim: EMBEDDING_DIM,
+    batchSize: intEnv("EMBED_BATCH_SIZE", 50),
+    maxConcurrency: intEnv("EMBED_MAX_CONCURRENCY", 2),
+    maxTokensBudget: intEnv("EMBED_MAX_TOKENS_BUDGET", 2000000),
+    apiKey: env("GEMINI_EMBEDDING_API_KEY"),
+  },
 
   // Retrieval parameters
   retrieval: {
@@ -55,7 +132,7 @@ export const config = {
     useLlmForRetrieval: process.env.USE_LLM_FOR_RETRIEVAL !== "false",
   },
 
-  // LLM configuration
+  // LLM configuration (legacy /api/consult path, unchanged)
   llm: {
     provider: (process.env.LLM_PROVIDER || "anthropic") as
       | "anthropic"
@@ -84,6 +161,51 @@ export const config = {
       (process.env.LLM_PROVIDER === "gemini"
         ? "https://generativelanguage.googleapis.com/v1beta/openai"
         : "http://localhost:5814"),
+  },
+
+  // Gemini chat settings for the agent (LangGraph path, §5.3). config.ts does
+  // not validate the provider; the agent runner factory does.
+  gemini: {
+    apiKey: env("GEMINI_API_KEY"), // undefined when unset; never defaulted
+    model: env("GEMINI_MODEL_NAME"), // undefined when unset; never defaulted
+    baseUrl:
+      env("GEMINI_OPENAI_BASE_URL") ??
+      "https://generativelanguage.googleapis.com/v1beta/openai/",
+    maxRetries: intEnv("GEMINI_MAX_RETRIES", 2),
+    maxConcurrency: intEnv("GEMINI_MAX_CONCURRENCY", 4),
+    temperature: 0.3,
+    maxTokens: 2000,
+  },
+
+  // Agent loop
+  agent: {
+    maxSteps: intEnv("AGENT_MAX_STEPS", 4),
+  },
+
+  // Working memory, history and session store (§5.5)
+  memory: {
+    shortTermMaxTurns: intEnv("SHORT_TERM_MAX_TURNS", 8),
+    shortTermMaxTokens: intEnv("SHORT_TERM_MAX_TOKENS", 512),
+    historyMaxTokens: intEnv("HISTORY_MAX_TOKENS", 1500),
+    maxObservationTokens: intEnv("MAX_OBSERVATION_TOKENS", 6000),
+    maxSessions: intEnv("MAX_SESSIONS", 1000),
+    sessionTtlS: intEnv("SESSION_TTL_S", 3600),
+    sessionsDir: resolve(
+      process.cwd(),
+      env("AGENT_SESSIONS_DIR") ?? join("storage", "agent-sessions"),
+    ),
+  },
+
+  // Langfuse Cloud observability (§5.8). Keys are read here only.
+  langfuse: {
+    enabled: boolEnv("LANGFUSE_ENABLED"),
+    publicKey: env("LANGFUSE_PUBLIC_KEY"), // undefined when unset
+    secretKey: env("LANGFUSE_SECRET_KEY"), // undefined when unset
+    baseUrl: env("LANGFUSE_BASE_URL") ?? "https://cloud.langfuse.com",
+    capture: captureEnv(),
+    projectId: env("LANGFUSE_PROJECT_ID"), // not secret; builds trace_url only
+    sampleRate: unitIntervalEnv("LANGFUSE_SAMPLE_RATE", 1),
+    environment: env("LANGFUSE_ENVIRONMENT"),
   },
 
   // API configuration

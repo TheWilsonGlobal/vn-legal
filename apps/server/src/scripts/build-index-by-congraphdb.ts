@@ -11,6 +11,7 @@ import {
 import { config } from "../shared/config";
 import logger from "../shared/logger";
 import { getEmbedder } from "../embeddings/embedder-factory";
+import { assertNoManifestLock } from "../embeddings/index-manifest";
 import { createConGraphIndexingPipeline } from "../embeddings/congraph";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -20,6 +21,8 @@ import { join } from "node:path";
 // ----------------------------------------------------------------------------
 
 export async function buildVectorIndex(): Promise<void> {
+  // A manifested store is locked to its own writer. Checked before any clearAll().
+  assertNoManifestLock(config.conGraphVectorDbPath);
   logger.info(
     "=== Starting Vector Index Build (ConGraphDB - Vectors Only) ===",
   );
@@ -92,6 +95,8 @@ export async function addIndex(
   filePath?: string,
   existingVectorStore?: IVectorStore,
 ): Promise<void> {
+  // Same lock as buildVectorIndex: a manifested store is never written here.
+  assertNoManifestLock(config.conGraphVectorDbPath);
   logger.info("=== Adding to Vector Index (ConGraphDB) ===");
 
   const startTime = Date.now();

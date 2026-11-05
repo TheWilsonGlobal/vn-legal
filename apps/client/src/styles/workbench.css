@@ -1,0 +1,291 @@
+/*
+ * Workbench shell: sidebar, topbar and the view slots (F1).
+ * Legacy page rules in ../index.css (.glass-card, .modal-*, .context-item,
+ * graph panel, markdown) are intentionally kept there: F2/F3 reuse them for
+ * MarkdownView, the Knowledge Explorer graph and the article/report modals.
+ */
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  overflow: hidden;
+}
+
+.app-shell {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  background: var(--bg-dark);
+  color: var(--text-main);
+}
+
+.mono {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+
+.muted {
+  color: var(--text-dim);
+}
+
+/* ---------- sidebar ---------- */
+.app-sidebar {
+  flex: 0 0 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 12px;
+  background: rgba(15, 23, 42, 0.95);
+  border-right: 1px solid var(--border-glass);
+  transition: flex-basis 0.2s ease;
+  overflow: hidden;
+}
+
+.app-sidebar.collapsed {
+  flex-basis: 64px;
+  align-items: center;
+}
+
+.app-sidebar-header {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sidebar-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.brand-title {
+  font-size: 20px;
+  font-weight: 700;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.brand-sub {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+}
+
+.sidebar-session {
+  align-self: flex-start;
+  margin-top: 8px;
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+  border: 1px solid var(--border-glass);
+  border-radius: 999px;
+}
+
+.sidebar-toggle-btn {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--border-glass);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.sidebar-nav ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style: none;
+}
+
+.sidebar-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--text-dim);
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.sidebar-nav-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-nav-btn.active {
+  color: var(--text-main);
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.45);
+}
+
+.nav-label {
+  flex: 1;
+}
+
+.nav-dot {
+  margin-left: auto;
+}
+
+.sidebar-toggle-btn:focus-visible,
+.sidebar-nav-btn:focus-visible,
+.link-btn:focus-visible {
+  outline: 2px solid #a5b4fc;
+  outline-offset: 2px;
+}
+
+/* ---------- status dots (overrides the pulsing legacy .dot) ---------- */
+.app-shell .dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  animation: none;
+  background: var(--text-dim);
+}
+
+.app-shell .dot-online {
+  background: #22c55e;
+}
+
+.app-shell .dot-offline,
+.app-shell .dot-error {
+  background: #ef4444;
+}
+
+.app-shell .dot-connecting {
+  background: #f59e0b;
+}
+
+/* ---------- topbar ---------- */
+.app-main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.workbench-topbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.workbench-topbar-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.workbench-topbar-right {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.topbar-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid var(--border-glass);
+  border-radius: 999px;
+}
+
+.topbar-error {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.link-btn {
+  padding: 0;
+  font: inherit;
+  color: #a5b4fc;
+  text-decoration: underline;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* ---------- view slots ---------- */
+.workbench {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+.view-slot {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.view-slot[hidden] {
+  display: none;
+}
+
+.view-missing {
+  margin: 24px;
+  padding: 20px;
+  border: 1px dashed var(--border-glass);
+  border-radius: 12px;
+}
+
+.view-missing h3 {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 768px) {
+  .app-sidebar {
+    flex-basis: 64px;
+    padding: 16px 8px;
+    align-items: center;
+  }
+  .app-sidebar-header {
+    justify-content: center;
+  }
+  .app-sidebar .sidebar-brand,
+  .app-sidebar .nav-label {
+    display: none;
+  }
+  .workbench-topbar {
+    flex-wrap: wrap;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

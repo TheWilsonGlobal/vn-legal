@@ -54,3 +54,6 @@ Thumbs.db
 
 # Docs
 docs/
+
+# Orchestrator state
+DAG.md

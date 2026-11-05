@@ -29,6 +29,51 @@ export async function getEmbedder(): Promise<IEmbedder> {
     return embedderInstance;
   }
 
+  const provider = config.embedding.provider;
+  if (provider === "gemini") {
+    // Server path: gemini-embedding-2 through the Gemini API (plan §5.9).
+    const apiKey = config.embedding.apiKey;
+    if (!apiKey) {
+      throw new Error(
+        "GEMINI_EMBEDDING_API_KEY is not set (required by EMBEDDING_PROVIDER=gemini)",
+      );
+    }
+    const model = config.embedding.model;
+    if (!model) {
+      throw new Error(
+        "EMBEDDING_MODEL is not set (required by EMBEDDING_PROVIDER=gemini)",
+      );
+    }
+    logger.info(
+      `Creating embedder provider: gemini (${model}, ${config.embedding.dim}-d)`,
+    );
+    const { GeminiEmbedder } = await import("./embedder-gemini.js");
+    embedderInstance = new GeminiEmbedder({
+      apiKey,
+      model,
+      dim: config.embedding.dim,
+      batchSize: config.embedding.batchSize,
+      maxConcurrency: config.embedding.maxConcurrency,
+    });
+    await embedderInstance.initialize();
+    return embedderInstance;
+  }
+  if (provider === "transformers") {
+    // Documented rollback only (plan §8 item 5): the legacy 384-d transformers embedder.
+    logger.info("Creating embedder provider: transformers (rollback, 384-d)");
+    const { Embedder } = await import("./embedder.js");
+    embedderInstance = new Embedder() as IEmbedder;
+    await embedderInstance.initialize();
+    return embedderInstance;
+  }
+  if (provider !== undefined) {
+    throw new Error(
+      'EMBEDDING_PROVIDER must be "gemini" or "transformers"; it is not a supported value',
+    );
+  }
+
+  // Provider unset: the legacy EMBEDDING_BACKEND switch, for legacy scripts only.
+  // The server never reaches it: assertServerEmbeddingConfig refuses an unset provider.
   logger.info(`Creating embedder backend: ${config.embeddingBackend}`);
 
   if (config.embeddingBackend === "api") {

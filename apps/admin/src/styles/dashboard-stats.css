@@ -1,0 +1,221 @@
+.dashboard-content {
+  padding: 40px;
+}
+
+.welcome-banner {
+  margin-bottom: 40px;
+}
+
+.welcome-banner h1 {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.welcome-banner p {
+  color: var(--text-dim);
+}
+
+/* Stats Cards */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.stat-card {
+  background: var(--card-bg);
+  backdrop-filter: var(--glass-effect);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  transition: transform 0.3s;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+}
+
+.stat-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-right: 20px;
+}
+
+.stat-icon.purple {
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--accent-purple);
+}
+.stat-icon.blue {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--accent-blue);
+}
+.stat-icon.green {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--accent-green);
+}
+.stat-icon.orange {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--accent-orange);
+}
+
+.stat-info h3 {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.stat-info .value {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.trend {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.trend.up {
+  color: var(--accent-green);
+}
+.trend.down {
+  color: #ef4444;
+}
+
+.stat-card.mini {
+  padding: 16px 20px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: linear-gradient(
+    145deg,
+    rgba(23, 27, 33, 0.8),
+    rgba(23, 27, 33, 0.4)
+  );
+}
+
+.stat-card.mini .stat-mini-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-card.mini .label {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-card.mini .value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-main);
+  font-family: "Outfit", sans-serif;
+}
+
+.stat-card.mini .mini-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.stat-card.mini.purple .mini-icon {
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--accent-purple);
+}
+.stat-card.mini.blue .mini-icon {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--accent-blue);
+}
+.stat-card.mini.green .mini-icon {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--accent-green);
+}
+.stat-card.mini.orange .mini-icon {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--accent-orange);
+}
+.stat-card.mini.pink .mini-icon {
+  background: rgba(236, 72, 153, 0.1);
+  color: var(--accent-pink);
+}
+
+/* Content Sections */
+.content-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+.card {
+  background: var(--card-bg);
+  backdrop-filter: var(--glass-effect);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  overflow: hidden;
+  height: 100%;
+}
+
+.card-header {
+  padding: 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.btn-small {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-small:hover {
+  background: var(--accent-blue);
+  color: white;
+}
+
+.badge-dim {
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+  border: 1px solid var(--border-color);
+}
+
+.activity-marker.gray {
+  background: #4b5563;
+}
+
+.card-body {
+  padding: 24px;
+}

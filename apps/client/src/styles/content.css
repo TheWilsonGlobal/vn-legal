@@ -1,0 +1,115 @@
+/* Search Mode Toggle */
+.search-mode-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.mode-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+  color: var(--text-dim);
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: var(--transition-smooth);
+}
+
+.mode-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+}
+
+.mode-btn.active {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+}
+
+.mode-btn i {
+  font-size: 14px;
+}
+
+/* Hierarchical Context */
+.hierarchical-context-display {
+  padding: 12px 24px;
+  background: rgba(99, 102, 241, 0.05);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+  color: #818cf8;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hierarchical-context-display i {
+  color: #6366f1;
+}
+
+/* Global Reports */
+.global-reports-preview {
+  margin-top: 10px;
+}
+
+.reports-mini-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.mini-report-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.mini-report-card strong {
+  display: block;
+  font-size: 12px;
+  color: #f1f5f9;
+  margin-bottom: 4px;
+}
+
+.mini-report-card p {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Markdown Container */
+.markdown-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.markdown-container p {
+  margin: 0;
+}
+
+.markdown-container h2,
+.markdown-container h3 {
+  color: var(--accent-color);
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.markdown-container h2 {
+  font-size: 20px;
+  border-bottom: 1px solid var(--border-glass);
+  padding-bottom: 8px;
+}
+.markdown-container h3 {
+  font-size: 16px;
+}
