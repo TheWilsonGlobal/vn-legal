@@ -224,7 +224,43 @@ export const config = {
     batchSize: 50,
     maxConcurrentEmbeddings: 5,
   },
+
+  // Identity & Access Management (iam-platform + Supabase Auth)
+  iam: {
+    iamUrl: env("IAM_URL") || "https://iam-api-cdnd.onrender.com",
+    iamClientId: env("IAM_CLIENT_ID") || "",
+    iamClientSecret: env("IAM_CLIENT_SECRET") || "",
+    iamRepoCode: "vn-legal",
+    supabaseUrl: (env("SUPABASE_URL") || "").replace(/\/+$/, ""),
+    supabaseAnonKey: env("SUPABASE_ANON_KEY") || "",
+    // REQUIRE_LOGIN defaults to true, overridable via env REQUIRE_LOGIN (e.g. false in development)
+    requireLogin: env("REQUIRE_LOGIN") !== undefined ? boolEnv("REQUIRE_LOGIN") : true,
+  },
 };
+
+/**
+ * Fails fast when identity is not configured and requireLogin is active.
+ */
+export function assertIamConfig(): void {
+  if (!config.iam.requireLogin) return;
+  const problems: string[] = [];
+  if (!config.iam.iamClientId || !config.iam.iamClientSecret) {
+    problems.push(
+      "IAM_CLIENT_ID and IAM_CLIENT_SECRET are required (pnpm register-repo in iam-platform writes them)",
+    );
+  }
+  if (!config.iam.supabaseUrl || !config.iam.supabaseAnonKey) {
+    problems.push("SUPABASE_URL and SUPABASE_ANON_KEY are required");
+  }
+  if (problems.length > 0) {
+    throw new Error(
+      [
+        `Refusing to start (REQUIRE_LOGIN=true):`,
+        ...problems.map((p) => `  - ${p}`),
+      ].join("\n"),
+    );
+  }
+}
 
 // Type exports
 export type Config = typeof config;

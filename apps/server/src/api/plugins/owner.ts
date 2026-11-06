@@ -41,6 +41,11 @@ export function applyOwnerCookie(
   fastify.decorateRequest("owner", "");
 
   fastify.addHook("onRequest", async (request, reply) => {
+    // If request has been authenticated by IAM, use iam.userId as the authoritative owner
+    if (request.iam?.userId) {
+      request.owner = request.iam.userId;
+      return;
+    }
     const raw = request.cookies[OWNER_COOKIE];
     if (raw !== undefined && OWNER_VALUE_RE.test(raw)) {
       request.owner = raw;

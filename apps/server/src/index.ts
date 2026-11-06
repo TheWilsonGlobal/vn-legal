@@ -18,4 +18,6 @@ export * from "./agent/prompts";
 export * from "./agent/tools";
 export * from "./agent/formatter";
 export * from "./api/server";
+export * from "./api/middleware/iamAuth";
+export * from "./api/routes/auth";
 export * from "./storage-adapters/congraph-rag-adapter";

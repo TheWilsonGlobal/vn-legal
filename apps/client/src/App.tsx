@@ -8,8 +8,9 @@ import {
   type ReactNode,
 } from "react";
 import { getInfo, isAbortError } from "./api/agent";
+import { initAuth, onAuthChange, signInWithGoogle } from "./api/auth";
 import { Sidebar } from "./layout/Sidebar";
-import { Topbar } from "./layout/Topbar";
+import { Topbar, type UserProfile } from "./layout/Topbar";
 import { VIEWS, resolveView } from "./layout/viewRegistry";
 import type { ConsultContext } from "./types/agent";
 import type { InfoState, ViewId, ViewProps } from "./types/views";
@@ -63,7 +64,45 @@ function App() {
     null,
   );
   const [info, setInfo] = useState<InfoState>({ status: "loading" });
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [requireLogin, setRequireLogin] = useState<boolean>(true);
+  const [authChecking, setAuthChecking] = useState<boolean>(true);
   const infoAbort = useRef<AbortController | null>(null);
+
+  const fetchCurrentUser = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (res.ok) {
+        const data = await res.json();
+        setRequireLogin(Boolean(data.requireLogin));
+        if (data.authenticated && data.user) {
+          setUser(data.user);
+        } else {
+          setUser(null);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to check auth state", e);
+    } finally {
+      setAuthChecking(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    initAuth()
+      .then((status) => {
+        setRequireLogin(status.requireLogin);
+        fetchCurrentUser();
+      })
+      .catch((err) => {
+        console.error("Auth init failed", err);
+        setAuthChecking(false);
+      });
+
+    return onAuthChange(() => {
+      fetchCurrentUser();
+    });
+  }, [fetchCurrentUser]);
 
   const refreshInfo = useCallback(() => {
     infoAbort.current?.abort();
@@ -121,9 +160,55 @@ function App() {
         info={info}
       />
       <div className="app-main-content">
-        <Topbar activeView={activeView} info={info} onRetryInfo={refreshInfo} />
+        <Topbar
+          activeView={activeView}
+          info={info}
+          onRetryInfo={refreshInfo}
+          user={user}
+          requireLogin={requireLogin}
+          onAuthRefresh={fetchCurrentUser}
+        />
         <main className="workbench">
-          {VIEWS.map(({ id, label }) => {
+          {requireLogin && !user && !authChecking ? (
+            <div
+              className="view-missing"
+              role="alert"
+              style={{
+                maxWidth: "480px",
+                margin: "40px auto",
+                textAlign: "center",
+                padding: "32px",
+                borderRadius: "12px",
+                background: "var(--card-bg, #ffffff)",
+                boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+              }}
+            >
+              <h3 style={{ fontSize: "20px", marginBottom: "12px" }}>
+                Yêu cầu đăng nhập
+              </h3>
+              <p style={{ color: "var(--muted, #64748b)", marginBottom: "24px" }}>
+                Hệ thống Tra cứu & Tư vấn Pháp luật yêu cầu đăng nhập tài khoản Google để tiếp tục.
+              </p>
+              <button
+                type="button"
+                className="topbar-pill"
+                onClick={() => signInWithGoogle().catch(console.error)}
+                style={{
+                  cursor: "pointer",
+                  background: "#2563eb",
+                  color: "#ffffff",
+                  padding: "10px 24px",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  borderRadius: "8px",
+                  border: "none",
+                }}
+              >
+                Đăng nhập với Google
+              </button>
+            </div>
+          ) : (
+            VIEWS.map(({ id, label }) => {
             const entry = resolveView(id);
             const isActive = id === activeView;
             return (
@@ -151,7 +236,8 @@ function App() {
                 )}
               </section>
             );
-          })}
+          })
+          )}
         </main>
       </div>
     </div>

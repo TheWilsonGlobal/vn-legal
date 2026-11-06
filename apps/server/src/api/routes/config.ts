@@ -13,6 +13,9 @@ export async function configRoutes(fastify: FastifyInstance) {
             type: "object",
             properties: {
               clientGraphMode: { type: "string" },
+              supabaseUrl: { type: "string" },
+              supabasePublishableKey: { type: "string" },
+              requireLogin: { type: "boolean" },
             },
           },
         },
@@ -21,6 +24,9 @@ export async function configRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest, reply: FastifyReply) => {
       return reply.send({
         clientGraphMode: config.clientGraphMode,
+        supabaseUrl: config.iam.supabaseUrl,
+        supabasePublishableKey: config.iam.supabaseAnonKey,
+        requireLogin: config.iam.requireLogin,
       });
     },
   );

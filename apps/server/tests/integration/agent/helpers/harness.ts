@@ -228,6 +228,7 @@ export async function spawnServer(opts: SpawnOptions): Promise<ServerHandle> {
     GEMINI_MAX_CONCURRENCY: "2",
     AGENT_MAX_STEPS: "4",
     LANGFUSE_ENABLED: "false",
+    REQUIRE_LOGIN: "false",
   });
   Object.assign(env, opts.env ?? {});
   // Never let an overridden endpoint receive the real chat key.

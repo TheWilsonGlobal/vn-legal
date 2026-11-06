@@ -84,7 +84,17 @@ vi.mock("../src/shared/config", () => ({
       sampleRate: 1,
       environment: undefined,
     },
+    iam: {
+      iamUrl: "http://127.0.0.1:5490",
+      iamClientId: "test-client",
+      iamClientSecret: "iamsk_test",
+      iamRepoCode: "vn-legal",
+      supabaseUrl: "https://test.supabase.co",
+      supabaseAnonKey: "test-anon-key",
+      requireLogin: true,
+    },
   },
+  assertIamConfig: vi.fn(),
   configIssues: [],
 }));
 

@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import "./index.css";
 import { Sidebar } from "./components/layout/Sidebar.tsx";
-import { Header } from "./components/layout/Header.tsx";
+import { Header, type AdminUser } from "./components/layout/Header.tsx";
+import { initAuth, onAuthChange, signInWithGoogle } from "./api/auth.ts";
 import { ConfigSavedModal } from "./components/modals/ConfigSavedModal.tsx";
 import { ArticlePreviewModal } from "./components/modals/ArticlePreviewModal.tsx";
 import { useGraphState } from "./hooks/useGraphState.ts";
@@ -24,6 +25,44 @@ function App() {
   const [collapsedSections, setCollapsedSections] = useState<
     Record<string, boolean>
   >({});
+  const [user, setUser] = useState<AdminUser | null>(null);
+  const [requireLogin, setRequireLogin] = useState<boolean>(true);
+  const [authChecking, setAuthChecking] = useState<boolean>(true);
+
+  const fetchCurrentUser = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (res.ok) {
+        const data = await res.json();
+        setRequireLogin(Boolean(data.requireLogin));
+        if (data.authenticated && data.user) {
+          setUser(data.user);
+        } else {
+          setUser(null);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to check auth state in admin", e);
+    } finally {
+      setAuthChecking(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    initAuth()
+      .then((status) => {
+        setRequireLogin(status.requireLogin);
+        fetchCurrentUser();
+      })
+      .catch((err) => {
+        console.error("Auth init failed", err);
+        setAuthChecking(false);
+      });
+
+    return onAuthChange(() => {
+      fetchCurrentUser();
+    });
+  }, [fetchCurrentUser]);
 
   const toggleSection = (section: string) => {
     setCollapsedSections((prev) => ({ ...prev, [section]: !prev[section] }));
@@ -220,8 +259,46 @@ function App() {
       />
 
       <main className="main-content">
-        <Header />
-        <section className="dashboard-content">{renderView()}</section>
+        <Header user={user} onRefreshAuth={fetchCurrentUser} />
+        <section className="dashboard-content">
+          {requireLogin && !user && !authChecking ? (
+            <div
+              style={{
+                maxWidth: "460px",
+                margin: "60px auto",
+                padding: "32px",
+                background: "#fff",
+                borderRadius: "12px",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+                textAlign: "center",
+              }}
+            >
+              <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "8px" }}>
+                Yêu cầu đăng nhập Quản trị viên
+              </h3>
+              <p style={{ color: "#64748b", fontSize: "14px", marginBottom: "20px" }}>
+                Vui lòng đăng nhập với tài khoản Google để truy cập trang quản trị tri thức và cấu hình mô hình.
+              </p>
+              <button
+                type="button"
+                onClick={() => signInWithGoogle().catch(console.error)}
+                style={{
+                  padding: "10px 20px",
+                  background: "#2563eb",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Đăng nhập với Google
+              </button>
+            </div>
+          ) : (
+            renderView()
+          )}
+        </section>
       </main>
 
       <ConfigSavedModal

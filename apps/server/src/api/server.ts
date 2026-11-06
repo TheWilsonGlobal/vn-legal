@@ -17,6 +17,9 @@ import { articlesRoutes } from "./routes/articles";
 import { healthRoutes } from "./routes/health";
 import { adminRoutes } from "./routes/admin";
 import { configRoutes } from "./routes/config";
+import { authRoutes } from "./routes/auth";
+import { policyHook, type PolicyEntry } from "./middleware/iamAuth";
+import { assertIamConfig } from "../shared/config";
 import { createGraphClient } from "../graph/client";
 import { createVectorStore } from "../embeddings/vector-store-factory";
 import { getEmbedder } from "../embeddings/embedder-factory";
@@ -72,8 +75,70 @@ export async function createServer(options: ServerOptions) {
 
   await fastify.after();
 
+  // 2. Register Global IAM Policy Hook
+  // Public routes are explicitly marked 'public'.
+  // Protected routes require valid IAM permission.
+  // Missing routes fail closed with 403 Forbidden.
+  const policy: PolicyEntry[] = [
+    // Public routes
+    { method: "GET", url: "/api/health", permission: "public" },
+    { method: "GET", url: "/api/config", permission: "public" },
+    { method: "GET", url: "/api/auth/me", permission: "public" },
+    { method: "GET", url: "/api/docs", permission: "public" },
+    { method: "GET", url: "/api/docs/*", permission: "public" },
+
+    // Consultation routes
+    { method: "POST", url: "/api/consult", permission: "consult:create" },
+
+    // Article query routes
+    { method: "GET", url: "/api/article/:id", permission: "articles:read" },
+    { method: "GET", url: "/api/articles", permission: "articles:read" },
+    { method: "GET", url: "/api/articles/search", permission: "articles:read" },
+
+    // Agent workbench routes (C1-C10)
+    { method: "POST", url: "/api/agent/stream", permission: "consult:create" },
+    { method: "POST", url: "/api/agent/run", permission: "consult:create" },
+    { method: "POST", url: "/api/agent/sessions", permission: "session:manage_own" },
+    { method: "GET", url: "/api/agent/sessions", permission: "session:read_own" },
+    { method: "GET", url: "/api/agent/sessions/:id", permission: "session:read_own" },
+    { method: "DELETE", url: "/api/agent/sessions/:id", permission: "session:manage_own" },
+    { method: "GET", url: "/api/agent/traces", permission: "session:read_own" },
+    { method: "GET", url: "/api/agent/traces/verify", permission: "session:read_own" },
+    { method: "GET", url: "/api/agent/examples", permission: "public" },
+    { method: "GET", url: "/api/agent/info", permission: "public" },
+    { method: "GET", url: "/api/agent/memory/stats", permission: "settings:manage" },
+
+    // Admin & system routes
+    { method: "GET", url: "/api/admin/overview", permission: "graph:read" },
+    { method: "GET", url: "/api/admin/graph/data", permission: "graph:read" },
+    { method: "GET", url: "/api/admin/graph/stats", permission: "graph:read" },
+    { method: "GET", url: "/api/admin/graph/relations", permission: "graph:read" },
+    { method: "GET", url: "/api/admin/graph/relations/leaderboard", permission: "graph:read" },
+    { method: "GET", url: "/api/admin/communities", permission: "community:read" },
+    { method: "GET", url: "/api/admin/communities/reports", permission: "community:read" },
+    { method: "GET", url: "/api/admin/knowledge/generals", permission: "graph:read" },
+    { method: "GET", url: "/api/admin/knowledge/nodes", permission: "graph:read" },
+    { method: "GET", url: "/api/admin/knowledge/relations", permission: "graph:read" },
+    { method: "GET", url: "/api/admin/knowledge/relations/leaderboard", permission: "graph:read" },
+    { method: "GET", url: "/api/admin/vector/stores", permission: "vector:manage" },
+    { method: "GET", url: "/api/admin/vector/stats", permission: "vector:manage" },
+    { method: "POST", url: "/api/admin/vector/search", permission: "vector:manage" },
+    { method: "POST", url: "/api/admin/rebuild-vector", permission: "vector:manage" },
+    { method: "GET", url: "/api/admin/rebuild-vector/status", permission: "vector:manage" },
+    { method: "POST", url: "/api/admin/add-index", permission: "vector:manage" },
+    { method: "GET", url: "/api/admin/llm/status", permission: "settings:manage" },
+    { method: "GET", url: "/api/admin/llm/last-prompt", permission: "settings:manage" },
+    { method: "PUT", url: "/api/admin/llm/endpoint", permission: "settings:manage" },
+    { method: "GET", url: "/api/admin/config", permission: "settings:manage" },
+    { method: "POST", url: "/api/admin/config", permission: "settings:manage" },
+    { method: "GET", url: "/api/admin/activities", permission: "logs:read" },
+  ];
+
+  fastify.addHook("onRequest", policyHook(policy));
+
   // 3. Register API routes
   await fastify.register(healthRoutes, { prefix: "/api", graph, vectorStore });
+  await fastify.register(authRoutes, { prefix: "/api" });
   await fastify.register(adminRoutes, {
     prefix: "/api",
     graph,
@@ -174,6 +239,9 @@ if (isMainModule) {
   (async () => {
     try {
       logger.info("Initializing Vietnam Legal Consultant System...");
+
+      // 0. Validate IAM configuration
+      assertIamConfig();
 
       // 1. Initialize core components
       const graph = await createGraphClient();
