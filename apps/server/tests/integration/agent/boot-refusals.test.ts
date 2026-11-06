@@ -51,17 +51,48 @@ function syntheticStore(name: string, manifestOverrides = {}) {
   return store;
 }
 
+/**
+ * Copies the old 384-d store plus RB1's legacy manifest into a temp dir and
+ * proves the copy really carries the legacy manifest (provider transformers,
+ * dim 384) before any boot, so a refusal cannot be a "no manifest" refusal.
+ */
+function copyOldStore(name: string): string {
+  const copyDir = path.join(area.root, name);
+  fs.mkdirSync(copyDir, { recursive: true });
+  const storage = path.join(REPO_ROOT, "storage");
+  const files = fs
+    .readdirSync(storage)
+    .filter((f) => f.startsWith("congraph_vectors.") && !f.includes("gemini"));
+  expect(files, "storage/congraph_vectors.* (old store) must exist").toContain(
+    "congraph_vectors.cgraph",
+  );
+  for (const f of files)
+    fs.copyFileSync(path.join(storage, f), path.join(copyDir, f));
+  const manifestFile = path.join(
+    copyDir,
+    "congraph_vectors.cgraph.manifest.json",
+  );
+  expect(
+    fs.existsSync(manifestFile),
+    "the store copy must carry RB1's legacy manifest",
+  ).toBe(true);
+  const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8"));
+  expect(manifest.provider).toBe("transformers");
+  expect(manifest.dim).toBe(384);
+  return path.join(copyDir, "congraph_vectors.cgraph");
+}
+
 describe("AC 34: provider guard (runner factory)", () => {
   it("LLM_PROVIDER=llama exits non-zero and names LLM_PROVIDER and 'gemini'", async () => {
     const log = await refuse({ LLM_PROVIDER: "llama" });
-    expect(log).toContain("LLM_PROVIDER");
-    expect(log).toMatch(/gemini/i);
+    // one line must carry both the variable and the required value
+    expect(log).toMatch(/LLM_PROVIDER[^\n]*\bgemini\b/i);
   });
 
   it("LLM_PROVIDER='' exits non-zero and names LLM_PROVIDER and 'gemini'", async () => {
     const log = await refuse({ LLM_PROVIDER: "" });
-    expect(log).toContain("LLM_PROVIDER");
-    expect(log).toMatch(/gemini/i);
+    // one line must carry both the variable and the required value
+    expect(log).toMatch(/LLM_PROVIDER[^\n]*\bgemini\b/i);
   });
 });
 
@@ -85,21 +116,7 @@ describe("AC 39: index / embedder match refusals", () => {
 
   it("EMBEDDING_PROVIDER=gemini + a COPY of the old 384-d store (legacy manifest) exits non-zero naming path and field", async () => {
     // The original old store is never opened: copy it, plus its legacy manifest.
-    const copyDir = path.join(area.root, "oldcopy");
-    fs.mkdirSync(copyDir, { recursive: true });
-    const storage = path.join(REPO_ROOT, "storage");
-    const files = fs
-      .readdirSync(storage)
-      .filter(
-        (f) => f.startsWith("congraph_vectors.") && !f.includes("gemini"),
-      );
-    expect(
-      files.length,
-      "storage/congraph_vectors.* (old store) must exist",
-    ).toBeGreaterThan(0);
-    for (const f of files)
-      fs.copyFileSync(path.join(storage, f), path.join(copyDir, f));
-    const copyStore = path.join(copyDir, "congraph_vectors.cgraph");
+    const copyStore = copyOldStore("oldcopy");
     const log = await refuse({
       CONGRAPH_VECTOR_DB_PATH: copyStore,
       EMBEDDING_PROVIDER: "gemini",
@@ -107,8 +124,12 @@ describe("AC 39: index / embedder match refusals", () => {
     expect(log, "log names the store path").toContain(
       "congraph_vectors.cgraph",
     );
-    expect(log, "log names a mismatched field").toMatch(
-      /provider|dim|model|manifest/i,
+    // a manifest field AND its value, on one line: not just the word "manifest"
+    // index-manifest.ts:225: `index manifest <path>: field provider is
+    // "transformers" but the configured embedder has "gemini"` (path, field,
+    // stored and configured value on ONE line).
+    expect(log, "log names path, field, stored and configured value").toMatch(
+      /index manifest [^\n]*congraph_vectors\.cgraph\.manifest\.json: field provider is "transformers" but the configured embedder has "gemini"/,
     );
   });
 
@@ -133,7 +154,10 @@ describe("AC 39: index / embedder match refusals", () => {
       EMBEDDING_DIM: "384",
     });
     expect(log).toContain("store.cgraph");
-    expect(log).toMatch(/dim/i);
+    // index-manifest.ts:225 (provider and model match, dim is the first diff)
+    expect(log).toMatch(
+      /index manifest [^\n]*store\.cgraph\.manifest\.json: field dim is 768 but the configured embedder has 384/,
+    );
   });
 
   it("VECTOR_STORE_TYPE=lancedb with Gemini embeddings exits non-zero naming VECTOR_STORE_TYPE", async () => {
@@ -155,21 +179,22 @@ describe("AC 42 (negative half): changing only ONE of the two rollback settings 
       EMBEDDING_PROVIDER: "transformers",
     });
     expect(log).toContain("store.cgraph");
-    expect(log).toMatch(/provider|model|dim/i);
+    // index-manifest.ts:225: stored "gemini", configured "transformers"
+    expect(log).toMatch(
+      /index manifest [^\n]*store\.cgraph\.manifest\.json: field provider is "gemini" but the configured embedder has "transformers"/,
+    );
   });
 
-  it("old-store COPY with EMBEDDING_PROVIDER=gemini exits non-zero", async () => {
-    const copyDir = path.join(area.root, "oldcopy2");
-    fs.mkdirSync(copyDir, { recursive: true });
-    const storage = path.join(REPO_ROOT, "storage");
-    for (const f of fs.readdirSync(storage)) {
-      if (f.startsWith("congraph_vectors.") && !f.includes("gemini"))
-        fs.copyFileSync(path.join(storage, f), path.join(copyDir, f));
-    }
-    const log = await refuse({
-      CONGRAPH_VECTOR_DB_PATH: path.join(copyDir, "congraph_vectors.cgraph"),
-      EMBEDDING_PROVIDER: "gemini",
-    });
-    expect(log).toMatch(/provider|model|dim|manifest/i);
+  it("only CONGRAPH_VECTOR_DB_PATH changed (old-store COPY, .env keeps EMBEDDING_PROVIDER=gemini) exits non-zero naming the field", async () => {
+    const copyStore = copyOldStore("oldcopy2");
+    // EMBEDDING_PROVIDER and EMBEDDING_DIM are deliberately NOT set here.
+    const log = await refuse({ CONGRAPH_VECTOR_DB_PATH: copyStore });
+    expect(log).toContain("congraph_vectors.cgraph");
+    // index-manifest.ts:225: `index manifest <path>: field provider is
+    // "transformers" but the configured embedder has "gemini"` (path, field,
+    // stored and configured value on ONE line).
+    expect(log, "log names path, field, stored and configured value").toMatch(
+      /index manifest [^\n]*congraph_vectors\.cgraph\.manifest\.json: field provider is "transformers" but the configured embedder has "gemini"/,
+    );
   });
 });

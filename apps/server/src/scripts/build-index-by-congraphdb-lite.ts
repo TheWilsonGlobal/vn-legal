@@ -9,6 +9,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import logger from "../shared/logger";
 import { getEmbedder } from "../embeddings/embedder-factory";
+import { assertNoManifestLock } from "../embeddings/index-manifest";
 import {
   createConGraphVectorStore,
   createConGraphIndexingPipeline,
@@ -27,6 +28,8 @@ const LITE_MODE_CONFIG = {
 };
 
 export async function buildGraphLite(): Promise<void> {
+  // A manifested store is locked to its own writer. Checked before any clearAll().
+  assertNoManifestLock(config.conGraphVectorDbPath);
   logger.info("=== Starting Graph Build (Lite - Limited Vector Indexing) ===");
 
   // Check embedding backend

@@ -99,10 +99,29 @@ describe("Embedder Factory", () => {
   });
 
   describe("getEmbedderType", () => {
+    const originalEmbedding = (config as any).embedding;
+    afterEach(() => {
+      (config as any).embedding = originalEmbedding;
+    });
+
     it("should return configured embedding backend", () => {
       (config as any).embeddingBackend = "transformers";
       const type = getEmbedderType();
       expect(type).toBe("transformers");
+    });
+
+    it("reports the provider under EMBEDDING_PROVIDER=gemini, not the legacy backend (R10-07)", () => {
+      (config as any).embedding = { provider: "gemini" };
+      (config as any).embeddingBackend = "transformers";
+
+      expect(getEmbedderType()).toBe("gemini");
+    });
+
+    it("reports the legacy backend only when EMBEDDING_PROVIDER is unset", () => {
+      (config as any).embedding = { provider: undefined };
+      (config as any).embeddingBackend = "api";
+
+      expect(getEmbedderType()).toBe("api");
     });
   });
 

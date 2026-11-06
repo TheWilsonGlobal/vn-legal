@@ -29,6 +29,8 @@ import {
   buildVectorIndex,
   addIndex,
 } from "../../../src/scripts/build-index-by-congraphdb";
+import { buildGraphLite } from "../../../src/scripts/build-index-by-congraphdb-lite";
+import { createGraphClient } from "../../../src/graph/client";
 import { createVectorStore } from "../../../src/embeddings/vector-store-factory";
 import { getEmbedder } from "../../../src/embeddings/embedder-factory";
 
@@ -55,6 +57,13 @@ vi.mock("../../../src/embeddings/congraph", () => ({
 vi.mock("../../../src/graph/parser", () => ({
   parseLegalFile: vi.fn(),
   parseLegalData: vi.fn(),
+}));
+// The lite build must refuse before it reaches the graph. If it does not, this
+// throws, so the test fails without touching a real database.
+vi.mock("../../../src/graph/client", () => ({
+  createGraphClient: vi.fn(() => {
+    throw new Error("graph build reached before the manifest lock check");
+  }),
 }));
 
 const KEY_LIKE = "test-key-not-real";
@@ -350,6 +359,17 @@ describe("legacy build functions refuse a manifested store (AC 41)", () => {
     expect(storeBytesHash()).toBe(before);
     expect(createVectorStore).not.toHaveBeenCalled();
     expect(getEmbedder).not.toHaveBeenCalled();
+  });
+
+  it("buildGraphLite throws before the graph build and clearAll (R10-04)", async () => {
+    const before = storeBytesHash();
+
+    await expect(buildGraphLite()).rejects.toMatchObject({
+      code: "index_locked_by_manifest",
+    });
+
+    expect(createGraphClient).not.toHaveBeenCalled();
+    expect(storeBytesHash()).toBe(before);
   });
 
   it("addIndex throws before clearAll and leaves the store byte-identical", async () => {

@@ -107,8 +107,10 @@ export function resetEmbedder(): void {
 }
 
 /**
- * Get current embedder type
+ * Get current embedder type: the EMBEDDING_PROVIDER value when it is set, so
+ * "gemini" under the Gemini provider. Only when the provider is unset does it
+ * report the legacy EMBEDDING_BACKEND switch.
  */
 export function getEmbedderType(): string {
-  return config.embeddingBackend;
+  return config.embedding.provider ?? config.embeddingBackend;
 }

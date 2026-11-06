@@ -56,43 +56,50 @@ Optional: `RB1_MANIFEST_PATH` overrides the default location of the RB1 manifest
 (`storage/congraph_vectors_gemini-embedding-2_768.cgraph.manifest.json`) used by
 the AC 39 positive check in `index-lock.test.ts`.
 
+`RB1_PRERUN_HASHES` (REQUIRED for AC 39) is the path of RB1's pre-run list of
+the old store (`pre-run-old-store-hashes.txt`: a header line, then
+`name<TAB>size<TAB>sha256`). The `rollback` test "AC 39 hash check" compares
+the current `storage/congraph_vectors.*` files named in that list against it.
+When the variable is absent that test FAILS (it never skips), because without
+RB1's own list the check would only compare the store with itself.
+
 The vitest config already runs files on a single thread; `--no-file-parallelism`
 is belt and braces. Server boot takes about 15 to 60 s (model and index load),
 so expect the whole offline set to take several minutes.
 
 ## AC to test map
 
-| AC  | File: test                                                                                           |
-| --- | ---------------------------------------------------------------------------------------------------- |
-| 1   | `live-agent`: AC 1                                                                                   |
-| 2   | `live-agent`: AC 2                                                                                   |
-| 3   | `llm-failure`: AC 3 (both tests)                                                                     |
-| 4   | `live-agent`: AC 4                                                                                   |
-| 5   | `sessions-api`: AC 5                                                                                 |
-| 6   | `llm-failure`: AC 6 (abort, 409 busy)                                                                |
-| 7   | `sessions-api`: AC 7 (C1 and C2, four bad bodies, 1000-char boundary)                                |
-| 9   | `live-agent`: AC 9                                                                                   |
-| 17  | `live-agent`: AC 17                                                                                  |
-| 18  | `live-window`: AC 18                                                                                 |
-| 19  | `sessions-api`: AC 19 (HTTP half, offline); `live-agent`: AC 19 (recall half)                        |
-| 20  | `persistence`: AC 20 (offline); `live-agent`: AC 20 (recall after restart)                           |
-| 21  | `persistence`: AC 21 (torn line, corrupt index)                                                      |
-| 22  | `sessions-api`: AC 22                                                                                |
-| 25  | `persistence`: AC 25                                                                                 |
-| 27  | `langfuse`: AC 27 (offline) and `[live]` run                                                         |
-| 28  | `langfuse`: AC 28 (offline) and `[live]` run                                                         |
-| 29  | `langfuse`: AC 29 (offline) and `[live]` run                                                         |
-| 31  | `langfuse`: AC 31 (two tests, see Windows note)                                                      |
-| 32  | `secrets`: AC 32                                                                                     |
-| 34  | `boot-refusals`: AC 34                                                                               |
-| 35  | `boot-refusals`: AC 35                                                                               |
-| 36  | `llm-failure`: AC 36                                                                                 |
-| 37  | `llm-failure`: AC 37 (stub half, offline); `live-errors`: AC 37 (real Google)                        |
-| 38  | `live-errors`: AC 38                                                                                 |
-| 39  | `boot-refusals`: AC 39 (refusals); `index-lock`: AC 39 (positive); AC 39 hash check is in `rollback` |
-| 40  | `secrets`: AC 40                                                                                     |
-| 41  | `index-lock`: AC 41                                                                                  |
-| 42  | `rollback`: AC 42; `boot-refusals`: AC 42 (one setting only)                                         |
+| AC  | File: test                                                                                      |
+| --- | ----------------------------------------------------------------------------------------------- |
+| 1   | `live-agent`: AC 1                                                                              |
+| 2   | `live-agent`: AC 2                                                                              |
+| 3   | `llm-failure`: AC 3 (both tests)                                                                |
+| 4   | `live-agent`: AC 4                                                                              |
+| 5   | `sessions-api`: AC 5                                                                            |
+| 6   | `llm-failure`: AC 6 (abort, 409 busy)                                                           |
+| 7   | `sessions-api`: AC 7 (C1 and C2, four bad bodies, 1000-char boundary)                           |
+| 9   | `live-agent`: AC 9                                                                              |
+| 17  | `live-agent`: AC 17                                                                             |
+| 18  | `live-window`: AC 18                                                                            |
+| 19  | `sessions-api`: AC 19 (HTTP half, offline); `live-agent`: AC 19 (recall half)                   |
+| 20  | `persistence`: AC 20 (offline); `live-agent`: AC 20 (recall after restart)                      |
+| 21  | `persistence`: AC 21 (torn line, corrupt index)                                                 |
+| 22  | `sessions-api`: AC 22                                                                           |
+| 25  | `persistence`: AC 25                                                                            |
+| 27  | `langfuse`: AC 27 (offline) and `[live]` run                                                    |
+| 28  | `langfuse`: AC 28 (offline) and `[live]` run                                                    |
+| 29  | `langfuse`: AC 29 (offline) and `[live]` run                                                    |
+| 31  | `langfuse`: AC 31 (two tests, see Windows note)                                                 |
+| 32  | `secrets`: AC 32                                                                                |
+| 34  | `boot-refusals`: AC 34                                                                          |
+| 35  | `boot-refusals`: AC 35                                                                          |
+| 36  | `llm-failure`: AC 36                                                                            |
+| 37  | `llm-failure`: AC 37 (stub half, offline); `live-errors`: AC 37 (real Google)                   |
+| 38  | `live-errors`: AC 38                                                                            |
+| 39  | `boot-refusals`: AC 39 (refusals); `index-lock`: AC 39 (positive); `rollback`: AC 39 hash check |
+| 40  | `secrets`: AC 40                                                                                |
+| 41  | `index-lock`: AC 41                                                                             |
+| 42  | `rollback`: AC 42; `boot-refusals`: AC 42 (one setting only)                                    |
 
 ## Things TR1 must know
 
@@ -112,6 +119,15 @@ so expect the whole offline set to take several minutes.
   `helpers/harness.ts` so this test tree does not match itself. The RB1 run
   log location is not fixed by the plan, so it is not scanned here; TR1 should
   run the same grep over it by hand.
+- **Deviation from the plan's literal AC 40 regex.** The Google OAuth-style
+  alternative (the letters A and Q followed by a dot) is anchored so that it
+  must not follow a letter, digit or underscore. The unanchored form matches
+  ordinary prose such as the word FAQ followed by a full stop. The other
+  alternatives are unchanged. The two halves are exported separately from the
+  harness (`LANGFUSE_GREP_ERE`, `GOOGLE_GREP_ERE`) because the anchored
+  alternative contains a `|` itself.
+- **AC 36 time budget.** The elapsed-time assertion is 12 s (10 s retry budget
+  plus process overhead), not a loose multiple of it.
 - **AC 31 on Windows.** `child.kill("SIGTERM")` is `TerminateProcess` on
   Windows: no JavaScript handler can run, so `langfuse shutdown ok` can never
   appear from a real signal. Two tests cover this honestly:

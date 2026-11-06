@@ -15,7 +15,9 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   Client,
+  GOOGLE_GREP_ERE,
   KEY_GREP_ERE,
+  LANGFUSE_GREP_ERE,
   REPO_ROOT,
   deadLlmEnv,
   findKeyShapes,
@@ -63,7 +65,7 @@ function gitGrepFiles(ere: string): string[] {
 
 describe("AC 32: Langfuse keys", () => {
   it("git grep for the Langfuse key prefixes finds nothing in the repo (excluding .env)", () => {
-    const hits = gitGrepFiles(KEY_GREP_ERE.split("|").slice(0, 2).join("|"));
+    const hits = gitGrepFiles(LANGFUSE_GREP_ERE);
     expect(
       hits,
       `files containing Langfuse-key-shaped text: ${hits.join(", ")}`,
@@ -83,7 +85,7 @@ describe("AC 32: Langfuse keys", () => {
 
 describe("AC 40: Google keys", () => {
   it("git grep for the Google key prefixes finds nothing in the repo (excluding .env)", () => {
-    const hits = gitGrepFiles(KEY_GREP_ERE.split("|").slice(2).join("|"));
+    const hits = gitGrepFiles(GOOGLE_GREP_ERE);
     expect(
       hits,
       `files containing Google-key-shaped text: ${hits.join(", ")}`,

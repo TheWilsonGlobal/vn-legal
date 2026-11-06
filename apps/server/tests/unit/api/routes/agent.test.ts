@@ -6,6 +6,7 @@
  * 127.0.0.1 so that a client disconnect reaches the server socket.
  */
 import { randomUUID } from "node:crypto";
+import { request as httpRequest } from "node:http";
 import { Writable } from "node:stream";
 import Fastify, { type FastifyInstance } from "fastify";
 import fastifyCookie from "@fastify/cookie";
@@ -13,7 +14,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   agentRoutes,
   type AgentRoutesOptions,
-  type MemoryStats,
+  type MemoryStatsSource,
 } from "../../../../src/api/routes/agent";
 import { applyOwnerCookie } from "../../../../src/api/plugins/owner";
 import type {
@@ -34,11 +35,22 @@ import type {
 
 const OWNER_A = "a".repeat(32);
 const OWNER_B = "b".repeat(32);
-const KEY_SHAPES = /AIza|AQ\.|sk-lf-|pk-lf-|sk-[A-Za-z0-9]/;
+// Key-shaped fixtures are built from fragments so this repo never contains the literal
+// prefixes (the AC 32/40 git grep scans tests too). Same approach as harness.ts.
+const P_GOOGLE = "AI" + "za";
+const P_GOOGLE_OAUTH = "AQ" + "\\.";
+const P_LF_SECRET = "sk-" + "lf-";
+const P_LF_PUBLIC = "pk-" + "lf-";
+const KEY_SHAPES = new RegExp(
+  [P_GOOGLE, P_GOOGLE_OAUTH, P_LF_SECRET, P_LF_PUBLIC, "sk-[A-Za-z0-9]"].join(
+    "|",
+  ),
+);
 
 interface StreamInput {
   query: string;
   sessionId: string;
+  owner: string;
   mode?: "auto" | "local" | "global";
   filters?: unknown;
   created: boolean;
@@ -70,7 +82,8 @@ const TRACE_STATUS: ObservabilityStatus = {
   last_error_at: null,
 };
 
-const STATS: MemoryStats = {
+/** What memoryStats() supplies. The `store` block is never taken from here (C10). */
+const STATS: MemoryStatsSource = {
   short_term: {
     active_sessions: 2,
     turns: 5,
@@ -80,7 +93,6 @@ const STATS: MemoryStats = {
     max_sessions: 1000,
     ttl_s: 3600,
   },
-  store: { sessions: 3, records: 12, hidden: 1 },
   recall: { calls: 4, hits: 3, empty: 1 },
 };
 
@@ -214,13 +226,16 @@ class FakeStore implements SessionStore {
     this.calls.push("records");
     this.recordQueries.push({ ...q });
     const ids = this.visibleIds(owner);
-    const matched = this.rows.filter(
-      (r) =>
-        ids.has(r.session_id) &&
-        (q.session_id === undefined || r.session_id === q.session_id) &&
-        (q.kind === undefined || r.kind === q.kind) &&
-        (q.q === undefined || r.content.includes(q.q)),
-    );
+    // Newest first, as the real store returns them (rows are appended in seq order).
+    const matched = this.rows
+      .filter(
+        (r) =>
+          ids.has(r.session_id) &&
+          (q.session_id === undefined || r.session_id === q.session_id) &&
+          (q.kind === undefined || r.kind === q.kind) &&
+          (q.q === undefined || r.content.includes(q.q)),
+      )
+      .reverse();
     return {
       records: matched.slice(q.offset, q.offset + q.limit),
       total: matched.length,
@@ -233,6 +248,16 @@ class FakeStore implements SessionStore {
     if (!s || s.owner !== owner || s.hidden) return false;
     s.hidden = true;
     return true;
+  }
+
+  async counts() {
+    this.calls.push("counts");
+    const hidden = [...this.sessions.values()].filter((s) => s.hidden).length;
+    return {
+      sessions: this.sessions.size - hidden,
+      records: this.rows.length,
+      hidden,
+    };
   }
 
   async verify(owner: string) {
@@ -503,7 +528,11 @@ describe("404 session_not_found on C1 and C2", () => {
         payload: { query: "q", session_id: id },
       });
       expect(res.statusCode).toBe(200);
-      expect(runner.inputs[0]).toMatchObject({ sessionId: id, created: false });
+      expect(runner.inputs[0]).toMatchObject({
+        sessionId: id,
+        created: false,
+        owner: OWNER_A,
+      });
     });
 
     it(`${path}: with no session_id a new session is created and passed with created=true`, async () => {
@@ -517,6 +546,7 @@ describe("404 session_not_found on C1 and C2", () => {
       });
       expect(res.statusCode).toBe(200);
       expect(runner.inputs[0].created).toBe(true);
+      expect(runner.inputs[0].owner).toBe(OWNER_A);
       expect(store.calls).toContain("create");
       expect(store.sessions.has(runner.inputs[0].sessionId)).toBe(true);
     });
@@ -829,7 +859,58 @@ describe("C1 SSE stream", () => {
     });
     expect(res.statusCode).toBe(200);
     const setCookie = String(res.headers["set-cookie"] ?? "");
-    expect(setCookie).toMatch(/^vl_owner=[a-f0-9]{32}/);
+    expect(setCookie).toMatch(/^vl_owner=[a-f0-9]{32};/);
+    // Flags are written on the hijacked reply itself, so they must be on the SSE path too.
+    expect(setCookie).toMatch(/HttpOnly/);
+    expect(setCookie).toMatch(/SameSite=Strict/);
+    expect(setCookie).toMatch(/Path=\//);
+    expect(setCookie).toMatch(/Secure/);
+  });
+
+  it("R2-06: SSE framing holds when token, step and done text contain \\n, \\r and \\u2028", async () => {
+    const tricky = "dòng 1\ndòng 2\r\ndòng 3\rdòng 4 dòng 5\n\nhết";
+    const script: RunScript = async function* (input) {
+      yield {
+        event: "session",
+        data: { session_id: input.sessionId, created: input.created },
+      };
+      yield { event: "token", data: { text: tricky } };
+      yield {
+        event: "step",
+        data: {
+          index: 0,
+          kind: "observation",
+          content: tricky,
+          tool: null,
+          tool_input: null,
+          ok: true,
+          duration_ms: 1,
+        },
+      };
+      yield doneFor(input.sessionId, tricky);
+    };
+    const { app } = await harness({ script });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/agent/stream",
+      headers: as(OWNER_A),
+      payload: { query: "q" },
+    });
+    expect(res.statusCode).toBe(200);
+    // Only the frame separators may contain a raw line break.
+    const frames = res.body.split("\n\n").filter((b) => b.length > 0);
+    expect(frames).toHaveLength(4);
+    for (const f of frames) expect(f.split("\n")).toHaveLength(2);
+    const events = parseSse(res.body);
+    expect(events.map((e) => e.event)).toEqual([
+      "session",
+      "token",
+      "step",
+      "done",
+    ]);
+    expect(events[1].data).toEqual({ text: tricky });
+    expect((events[2].data as { content: string }).content).toBe(tricky);
+    expect((events[3].data as { answer: string }).answer).toBe(tricky);
   });
 
   it("a runner that throws mid-stream yields an error event with code internal and no done", async () => {
@@ -910,6 +991,139 @@ describe("C1 SSE stream", () => {
     const events = parseSse(res.body);
     expect(events.at(-1)!.event).toBe("error");
     expect(events.at(-1)!.data).toMatchObject({ code: "internal" });
+  });
+});
+
+// ----------------------------------------------------------------------------
+// R2-05: SSE backpressure and one completion line per stream
+// ----------------------------------------------------------------------------
+
+describe("R2-05 SSE backpressure and completion log", () => {
+  it("stops pulling from the runner while the client is not reading, and finishes once it reads", async () => {
+    const TOKENS = 100;
+    const TOKEN_CHARS = 512 * 1024; // about 50 MB in total, more than the socket buffers hold
+    let produced = 0;
+    const script: RunScript = async function* (input) {
+      yield {
+        event: "session",
+        data: { session_id: input.sessionId, created: input.created },
+      };
+      for (let i = 0; i < TOKENS; i++) {
+        produced += 1;
+        yield { event: "token", data: { text: "x".repeat(TOKEN_CHARS) } };
+      }
+      yield doneFor(input.sessionId);
+    };
+    const { app } = await harness({ script });
+    const address = await app.listen({ port: 0, host: "127.0.0.1" });
+    const port = Number(new URL(address).port);
+
+    let producedWhilePaused = -1;
+    const body = await new Promise<string>((resolve, reject) => {
+      const req = httpRequest(
+        {
+          host: "127.0.0.1",
+          port,
+          path: "/api/agent/stream",
+          method: "POST",
+          headers: { "content-type": "application/json" },
+        },
+        (res) => {
+          // Pause before any 'data' listener is attached, so nothing is read yet.
+          res.pause();
+          res.setEncoding("utf8");
+          let text = "";
+          res.on("data", (chunk: string) => {
+            text += chunk;
+          });
+          res.on("end", () => resolve(text));
+          res.on("error", reject);
+          setTimeout(() => {
+            producedWhilePaused = produced;
+            res.resume();
+          }, 1000);
+        },
+      );
+      req.on("error", reject);
+      req.end(JSON.stringify({ query: "q" }));
+    });
+
+    // With the drain wait, the runner is paused at the first full socket buffer.
+    // Without it, every token is pulled and buffered in memory at once.
+    expect(producedWhilePaused).toBeGreaterThan(0);
+    expect(producedWhilePaused).toBeLessThan(TOKENS);
+    const events = parseSse(body);
+    expect(events.filter((e) => e.event === "token")).toHaveLength(TOKENS);
+    expect(events.at(-1)!.event).toBe("done");
+  }, 30_000);
+
+  it("logs exactly one 'agent stream finished' line per stream, with status and duration_ms", async () => {
+    const logLines: string[] = [];
+    const sink = new Writable({
+      write(chunk, _enc, cb) {
+        logLines.push(chunk.toString());
+        cb();
+      },
+    });
+    let calls = 0;
+    const script: RunScript = async function* (input) {
+      calls += 1;
+      yield {
+        event: "session",
+        data: { session_id: input.sessionId, created: input.created },
+      };
+      if (calls === 2) throw new Error("boom");
+      yield doneFor(input.sessionId);
+    };
+    const store = new FakeStore();
+    const app = Fastify({ logger: { level: "info", stream: sink } });
+    apps.push(app);
+    await app.register(agentRoutes, {
+      prefix: "/api",
+      runner: makeRunner(script),
+      store,
+      memoryStats: async () => STATS,
+      tracer,
+      probeLlm: async () => true,
+    });
+    await app.ready();
+
+    const ok = await app.inject({
+      method: "POST",
+      url: "/api/agent/stream",
+      headers: as(OWNER_A),
+      payload: { query: "q" },
+    });
+    expect(ok.statusCode).toBe(200);
+    const failed = await app.inject({
+      method: "POST",
+      url: "/api/agent/stream",
+      headers: as(OWNER_A),
+      payload: { query: "q" },
+    });
+    expect(failed.statusCode).toBe(200);
+
+    const lines = logLines
+      .join("")
+      .split("\n")
+      .filter((l) => l.length > 0)
+      .map(
+        (l) =>
+          JSON.parse(l) as {
+            msg?: string;
+            status?: string;
+            duration_ms?: number;
+            session_id?: string;
+          },
+      );
+    const finished = lines.filter((l) => l.msg === "agent stream finished");
+    expect(finished).toHaveLength(2);
+    expect(finished.map((f) => f.status)).toEqual(["done", "runner_failed"]);
+    for (const f of finished) {
+      expect(typeof f.duration_ms).toBe("number");
+      expect(f.duration_ms).toBeGreaterThanOrEqual(0);
+      expect(typeof f.session_id).toBe("string");
+    }
   });
 });
 
@@ -1368,6 +1582,83 @@ describe("C6 soft delete", () => {
       ).statusCode,
     ).toBe(404);
   });
+
+  it("R2-04: C6 while a run is busy gives 409 session_busy (K10), so the delete is refused, not queued", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let started!: () => void;
+    const startedP = new Promise<void>((r) => (started = r));
+    const script: RunScript = async function* (input) {
+      yield {
+        event: "session",
+        data: { session_id: input.sessionId, created: input.created },
+      };
+      started();
+      await gate;
+      yield doneFor(input.sessionId);
+    };
+    const store = new FakeStore();
+    const id = store.seed(OWNER_A);
+    const { app, runner } = await harness({ store, script });
+    const first = app.inject({
+      method: "POST",
+      url: "/api/agent/run",
+      headers: as(OWNER_A),
+      payload: { query: "q", session_id: id },
+    });
+    await startedP;
+
+    const busyDelete = await app.inject({
+      method: "DELETE",
+      url: `/api/agent/sessions/${id}`,
+      headers: as(OWNER_A),
+    });
+    expect(busyDelete.statusCode).toBe(409);
+    expect(busyDelete.json()).toEqual({ error: "session_busy" });
+    expect(runner.forgotten).toHaveLength(0);
+    expect(store.sessions.get(id)!.hidden).toBe(false);
+
+    // A foreign id on a busy session still gets 404: 409 would reveal that the session exists.
+    const foreignDelete = await app.inject({
+      method: "DELETE",
+      url: `/api/agent/sessions/${id}`,
+      headers: as(OWNER_B),
+    });
+    expect(foreignDelete.statusCode).toBe(404);
+    expect(foreignDelete.json()).toEqual({ error: "session_not_found" });
+
+    release();
+    expect((await first).statusCode).toBe(200);
+    const afterRun = await app.inject({
+      method: "DELETE",
+      url: `/api/agent/sessions/${id}`,
+      headers: as(OWNER_A),
+    });
+    expect(afterRun.statusCode).toBe(200);
+  });
+
+  it("R2-03: a forgetSession failure gives 500 and leaves the session visible, because nothing was deleted", async () => {
+    const store = new FakeStore();
+    const id = store.seed(OWNER_A);
+    const { app, runner } = await harness({ store });
+    runner.forgetSession = async () => {
+      throw new Error("memory backend unavailable");
+    };
+    const res = await app.inject({
+      method: "DELETE",
+      url: `/api/agent/sessions/${id}`,
+      headers: as(OWNER_A),
+    });
+    expect(res.statusCode).toBe(500);
+    expect(res.json()).toEqual({ error: "internal" });
+    expect(store.sessions.get(id)!.hidden).toBe(false);
+    const still = await app.inject({
+      method: "GET",
+      url: `/api/agent/sessions/${id}`,
+      headers: as(OWNER_A),
+    });
+    expect(still.statusCode).toBe(200);
+  });
 });
 
 // ----------------------------------------------------------------------------
@@ -1548,6 +1839,31 @@ describe("C8 traces paging and validation", () => {
     expect(body.records[0].session_id).toBe(mine);
     expect(body.kind_counts.query).toBe(1);
   });
+
+  it("returns records newest first, so the first record is the latest seq in the session", async () => {
+    const store = new FakeStore();
+    const id = store.seed(OWNER_A);
+    for (let seq = 0; seq < 4; seq++) {
+      store.rows.push({
+        session_id: id,
+        run_id: "r",
+        seq,
+        created_at: `2026-05-01T00:00:0${seq}.000Z`,
+        kind: "query",
+        content: `q${seq}`,
+      });
+    }
+    const { app } = await harness({ store });
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/agent/traces?session_id=${id}&limit=2`,
+      headers: as(OWNER_A),
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.total).toBe(4);
+    expect(body.records.map((r: { seq: number }) => r.seq)).toEqual([3, 2]);
+  });
 });
 
 describe("C8v verify", () => {
@@ -1600,6 +1916,51 @@ describe("C9 info", () => {
     expect(res.json().llm_status).toBe("disconnected");
   }, 15_000);
 
+  it("R2-02: a rejected probe reports disconnected with 200, and warns with the error class only", async () => {
+    class ProbeUnreachable extends Error {}
+    const logLines: string[] = [];
+    const sink = new Writable({
+      write(chunk, _enc, cb) {
+        logLines.push(chunk.toString());
+        cb();
+      },
+    });
+    const app = Fastify({ logger: { level: "warn", stream: sink } });
+    apps.push(app);
+    await app.register(agentRoutes, {
+      prefix: "/api",
+      runner: makeRunner(defaultScript),
+      store: new FakeStore(),
+      memoryStats: async () => STATS,
+      tracer,
+      probeLlm: async () => {
+        throw new ProbeUnreachable(
+          "connect ECONNREFUSED https://generativelanguage.example/v1beta?key=" +
+            P_GOOGLE +
+            "SECRETVALUE0123456789",
+        );
+      },
+    });
+    await app.ready();
+    const res = await app.inject({ method: "GET", url: "/api/agent/info" });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().llm_status).toBe("disconnected");
+    expect(res.body).not.toContain(P_GOOGLE + "SECRET");
+
+    const logged = logLines.join("");
+    const warns = logged
+      .split("\n")
+      .filter((l) => l.length > 0)
+      .map((l) => JSON.parse(l) as { msg?: string; error_class?: string })
+      .filter(
+        (l) => l.msg === "agent info: llm probe failed, reporting disconnected",
+      );
+    expect(warns).toHaveLength(1);
+    expect(warns[0].error_class).toBe("ProbeUnreachable");
+    expect(logged).not.toContain(P_GOOGLE + "SECRET");
+    expect(logged).not.toContain("ECONNREFUSED");
+  });
+
   it("fails with 500 when no probe is wired, instead of guessing a status", async () => {
     const { app } = await harness({ probeLlm: "absent" });
     const res = await app.inject({ method: "GET", url: "/api/agent/info" });
@@ -1610,9 +1971,9 @@ describe("C9 info", () => {
   it("contains no key-shaped string, even when describe() carries one", async () => {
     const leaky = {
       ...DESCRIBE,
-      apiKey: "AIzaSyFAKEKEYVALUE0123456789abcdef",
-      gemini_key: "AQ.FAKEKEYVALUE",
-      langfuse: "sk-lf-0123456789abcdef",
+      apiKey: P_GOOGLE + "SyFAKEKEYVALUE0123456789abcdef",
+      gemini_key: "AQ" + ".FAKEKEYVALUE",
+      langfuse: P_LF_SECRET + "0123456789abcdef",
     } as unknown as typeof DESCRIBE;
     const store = new FakeStore();
     const runner = makeRunner(defaultScript);
@@ -1642,13 +2003,43 @@ describe("C9 info", () => {
 // ----------------------------------------------------------------------------
 
 describe("C10 memory stats", () => {
-  it("returns the memoryStats payload unchanged", async () => {
-    const { app } = await harness();
+  it("takes short_term and recall from memoryStats and the store block from store.counts()", async () => {
+    const store = new FakeStore();
+    const live = store.seed(OWNER_A);
+    const gone = store.seed(OWNER_B);
+    await store.softDelete(OWNER_B, gone);
+    store.rows.push({
+      session_id: live,
+      run_id: null,
+      seq: 0,
+      created_at: "2026-05-01T00:00:00.000Z",
+      kind: "session_created",
+      content: "",
+    });
+    const { app } = await harness({ store });
     const res = await app.inject({
       method: "GET",
       url: "/api/agent/memory/stats",
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual(STATS);
+    expect(res.json()).toEqual({
+      short_term: STATS.short_term,
+      store: { sessions: 1, records: 1, hidden: 1 },
+      recall: STATS.recall,
+    });
+  });
+
+  it("is a 500 when store.counts() fails, instead of a stale or empty store block", async () => {
+    const store = new FakeStore();
+    store.counts = async () => {
+      throw new Error("db unavailable");
+    };
+    const { app } = await harness({ store });
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/agent/memory/stats",
+    });
+    expect(res.statusCode).toBe(500);
+    expect(res.json()).toEqual({ error: "internal" });
   });
 });

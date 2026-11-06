@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   EmbeddingError,
+  estimateInputTokens,
+  GEMINI_MAX_INPUT_TOKENS,
   GeminiEmbedder,
   makeRetryAwareFetch,
   parseRetryAfterMs,
@@ -291,13 +293,31 @@ describe("errors never return a zero or partial vector (AC 38)", () => {
     );
   });
 
-  it("an input over the 8,192-token bound throws naming the id, and nothing is sent", async () => {
+  it("an input over the 8,192-token estimate throws naming the id, and nothing is sent", async () => {
     const { embedder } = await ready();
+    const over = { ...article, content: "ệ".repeat(8200) } as ArticleNode;
 
-    await expect(embedder.embedBatch(["a".repeat(9000)])).rejects.toThrow(
-      "input batch[0] is over the 8192-token embedding limit",
+    await expect(embedder.embedArticle(over)).rejects.toThrow(
+      "input a1 is over the 8192-token embedding limit: estimated",
     );
     expect(embedContent).not.toHaveBeenCalled();
+  });
+
+  it("the limit message says the count is an estimate and the text is not truncated", async () => {
+    const { embedder } = await ready();
+
+    let message = "";
+    try {
+      await embedder.embedArticle({
+        ...article,
+        content: "ệ".repeat(8200),
+      } as ArticleNode);
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toContain("an estimate, not a tokenizer count");
+    expect(message).toContain("not truncated");
+    expect(message).not.toContain("UTF-8 bytes");
   });
 
   it("embed before initialize throws", async () => {
@@ -380,6 +400,49 @@ describe("bounded retry (plan §5.3)", () => {
 
     await expect(embedder.embed("q")).rejects.toThrow("network error");
     expect(embedContent).toHaveBeenCalledTimes(3);
+  });
+
+  it.each([
+    [
+      "a socket reset",
+      Object.assign(new Error("socket hang up"), { code: "ECONNRESET" }),
+    ],
+    [
+      "a timeout",
+      Object.assign(new Error("request timed out"), { name: "TimeoutError" }),
+    ],
+    ["an abort", Object.assign(new Error("aborted"), { name: "AbortError" })],
+  ])("%s is a connection-level error: retried", async (_label, error) => {
+    const { embedder, sleep } = await ready();
+    embedContent.mockRejectedValue(error);
+
+    await expect(embedder.embed("q")).rejects.toThrow("network error");
+    expect(embedContent).toHaveBeenCalledTimes(3);
+    expect(sleep).toHaveBeenCalledTimes(2);
+  });
+
+  it("any other error throws at once, with no retry (R10-05)", async () => {
+    const { embedder, sleep } = await ready();
+    embedContent.mockRejectedValue(new Error("unexpected response shape"));
+
+    await expect(embedder.embed("q")).rejects.toThrow(
+      "unexpected response shape",
+    );
+    expect(embedContent).toHaveBeenCalledTimes(1);
+    expect(sleep).not.toHaveBeenCalled();
+  });
+
+  it("a TypeError that is not a fetch failure is not retried as network (R10-05)", async () => {
+    const { embedder, sleep } = await ready();
+    embedContent.mockRejectedValue(
+      new TypeError("Cannot read properties of undefined"),
+    );
+
+    await expect(embedder.embed("q")).rejects.toThrow(
+      "Cannot read properties of undefined",
+    );
+    expect(embedContent).toHaveBeenCalledTimes(1);
+    expect(sleep).not.toHaveBeenCalled();
   });
 
   it("honours Retry-After over the backoff", async () => {
@@ -489,4 +552,259 @@ describe("concurrency throttle", () => {
       expect(peak).toBe(max);
     },
   );
+});
+
+const VI_SENTENCE =
+  "Người có quyền sở hữu tài sản được định đoạt, sử dụng và hưởng lợi ích từ tài sản đó. ";
+
+describe("token estimate (R10-01)", () => {
+  it("counts one token per character, and four per character outside the BMP", () => {
+    expect(estimateInputTokens("abc")).toBe(3);
+    expect(estimateInputTokens("ệ")).toBe(1);
+    expect(estimateInputTokens("😀")).toBe(4);
+  });
+
+  it("a ~10 KB Vietnamese article under the estimate passes (the old byte check refused it)", async () => {
+    const { embedder } = await ready();
+    let content = "";
+    while (Buffer.byteLength(content, "utf-8") < 10_240) content += VI_SENTENCE;
+    expect(Buffer.byteLength(content, "utf-8")).toBeGreaterThanOrEqual(10_000);
+    expect(estimateInputTokens(content)).toBeLessThan(GEMINI_MAX_INPUT_TOKENS);
+    embedContent.mockResolvedValueOnce(okFor(1));
+
+    const out = await embedder.embedArticle({
+      ...article,
+      content,
+    } as ArticleNode);
+
+    expect(out).toHaveLength(DIM);
+    expect(embedContent).toHaveBeenCalledTimes(1);
+  });
+
+  it("an article whose estimate is over the limit fails naming its id, and nothing is sent", async () => {
+    const { embedder } = await ready();
+
+    await expect(
+      embedder.embedArticle({
+        ...article,
+        content: "😀".repeat(2100),
+      } as ArticleNode),
+    ).rejects.toThrow("input a1 is over the 8192-token embedding limit");
+    expect(embedContent).not.toHaveBeenCalled();
+  });
+});
+
+describe("embedDocuments (document path, batched)", () => {
+  const docs = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `d${i}`,
+      title: `Title ${i}`,
+      text: `body ${i}`,
+    }));
+
+  it("120 documents make 3 requests at batchSize 50, sized 50, 50 and 20", async () => {
+    const { embedder } = await ready();
+    embedContent.mockImplementation(async (request: { contents: unknown[] }) =>
+      okFor(request.contents.length),
+    );
+
+    const out = await embedder.embedDocuments(docs(120));
+
+    expect(embedContent).toHaveBeenCalledTimes(3);
+    const sizes = embedContent.mock.calls.map(
+      ([request]) => (request as { contents: unknown[] }).contents.length,
+    );
+    expect(sizes).toEqual([50, 50, 20]);
+    expect(out).toHaveLength(120);
+  });
+
+  it("each document is its own Content, with the document prefix title: T | text: X", async () => {
+    const { embedder } = await ready();
+    embedContent.mockResolvedValueOnce(okFor(2));
+
+    await embedder.embedDocuments([
+      { id: "d0", title: "Điều 1", text: "Nội dung một" },
+      { id: "d1", title: "A $& B", text: "x {content}" },
+    ]);
+
+    expect(embedContent).toHaveBeenCalledTimes(1);
+    const request = embedContent.mock.calls[0][0] as {
+      contents: Array<{ parts: unknown[] }>;
+    };
+    expect(request.contents).toHaveLength(2);
+    expect(request.contents.every((c) => c.parts.length === 1)).toBe(true);
+    expect(sentTexts(0)).toEqual([
+      "title: Điều 1 | text: Nội dung một",
+      "title: A $& B | text: x {content}",
+    ]);
+    expect(request).toMatchObject({
+      model: MODEL,
+      config: { outputDimensionality: DIM },
+    });
+  });
+
+  it("returns vectors in input order", async () => {
+    const { embedder } = await ready();
+    embedContent.mockResolvedValueOnce(okFor(2, 5));
+
+    const out = await embedder.embedDocuments(docs(2));
+
+    expect(out[0]).toEqual(vec(5));
+    expect(out[1]).toEqual(vec(6));
+  });
+
+  it("an empty list makes no request", async () => {
+    const { embedder } = await ready();
+
+    expect(await embedder.embedDocuments([])).toEqual([]);
+    expect(embedContent).not.toHaveBeenCalled();
+  });
+
+  it("a zero vector names the document id", async () => {
+    const { embedder } = await ready();
+    embedContent.mockResolvedValueOnce({
+      embeddings: [{ values: new Array(DIM).fill(0) }],
+    });
+
+    await expect(embedder.embedDocuments(docs(1))).rejects.toThrow(
+      "zero vector for d0",
+    );
+  });
+
+  it("an over-limit document names its id, and nothing is sent", async () => {
+    const { embedder } = await ready();
+    const items = [
+      ...docs(3),
+      { id: "d7", title: "Big", text: "ệ".repeat(8200) },
+    ];
+
+    await expect(embedder.embedDocuments(items)).rejects.toThrow(
+      "input d7 is over the 8192-token embedding limit",
+    );
+    expect(embedContent).not.toHaveBeenCalled();
+  });
+
+  it("a failed batch names the first and last ids in the batch", async () => {
+    const { embedder } = await ready();
+    embedContent.mockRejectedValueOnce(httpError(400));
+
+    await expect(embedder.embedDocuments(docs(50))).rejects.toThrow(
+      "embedContent for 50 inputs (ids d0 to d49) failed with HTTP 400",
+    );
+  });
+});
+
+describe("real @google/genai client with fetch stubbed (R10-06, RB1)", () => {
+  const json = (body: unknown, status: number, headers = {}) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { "content-type": "application/json", ...headers },
+    });
+
+  /** Drops the SDK mock for this test only: a fresh module graph gets the real client. */
+  async function realEmbedder(sleep: (ms: number) => Promise<void>) {
+    vi.resetModules();
+    vi.doUnmock("@google/genai");
+    const real = await import("../../../src/embeddings/embedder-gemini");
+    const embedder = new real.GeminiEmbedder({
+      apiKey: KEY,
+      model: MODEL,
+      dim: DIM,
+      batchSize: 50,
+      maxConcurrency: 2,
+      sleep,
+    });
+    await embedder.initialize();
+    return embedder;
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("a 429 with Retry-After reaches withRetry as RetryableHttpError and the delay is honoured", async () => {
+    const fetchStub = vi
+      .fn()
+      .mockResolvedValueOnce(
+        json(
+          {
+            error: {
+              code: 429,
+              message: "Resource has been exhausted",
+              status: "RESOURCE_EXHAUSTED",
+            },
+          },
+          429,
+          { "retry-after": "1" },
+        ),
+      )
+      .mockResolvedValueOnce(json({ embeddings: [{ values: vec(1) }] }, 200));
+    vi.stubGlobal("fetch", fetchStub);
+    const sleep = vi.fn(async (_ms: number) => {});
+    const embedder = await realEmbedder(sleep);
+
+    const out = await embedder.embed("q");
+
+    expect(out).toHaveLength(DIM);
+    expect(fetchStub).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledTimes(1);
+    expect(sleep).toHaveBeenCalledWith(1000);
+  });
+
+  it("a 429 that never clears throws Google's status and message, key and URL redacted", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        json(
+          {
+            error: {
+              code: 429,
+              message: `Quota exceeded for ${KEY}. See https://ai.google.dev/rate-limits`,
+              status: "RESOURCE_EXHAUSTED",
+            },
+          },
+          429,
+        ),
+      ),
+    );
+    const embedder = await realEmbedder(async () => {});
+
+    let caught: unknown;
+    try {
+      await embedder.embed("q");
+    } catch (error) {
+      caught = error;
+    }
+    const message = (caught as Error).message;
+    expect(caught).toMatchObject({ name: "EmbeddingError", httpStatus: 429 });
+    expect(message).toBe(
+      "Gemini embedContent for input query failed after 2 retries (HTTP 429: RESOURCE_EXHAUSTED: Quota exceeded for [key]. See [url])",
+    );
+    expect(message).not.toContain(KEY);
+    expect(message).not.toContain("https://");
+  });
+
+  it("a 400 from the SDK keeps Google's status and message, and is not retried", async () => {
+    const fetchStub = vi.fn(async () =>
+      json(
+        {
+          error: {
+            code: 400,
+            message: "Request contains an invalid argument.",
+            status: "INVALID_ARGUMENT",
+          },
+        },
+        400,
+      ),
+    );
+    vi.stubGlobal("fetch", fetchStub);
+    const sleep = vi.fn(async (_ms: number) => {});
+    const embedder = await realEmbedder(sleep);
+
+    await expect(embedder.embed("q")).rejects.toThrow(
+      "failed with HTTP 400: INVALID_ARGUMENT: Request contains an invalid argument.",
+    );
+    expect(fetchStub).toHaveBeenCalledTimes(1);
+    expect(sleep).not.toHaveBeenCalled();
+  });
 });

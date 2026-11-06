@@ -45,13 +45,20 @@ export interface MemoryStats {
   recall: { calls: number; hits: number; empty: number };
 }
 
+/** C10 `short_term` and `recall` blocks. The `store` block comes from `store.counts()`. */
+export type MemoryStatsSource = Omit<MemoryStats, "store">;
+
 export interface AgentRoutesOptions {
   runner: AgentRunner;
   store: SessionStore;
-  /** Required by the wiring contract. The routes reach memory only through the runner. */
-  memory: SessionMemory;
-  /** C10 source: short-term counters, store counts and recall counters. */
-  memoryStats: () => Promise<MemoryStats>;
+  /**
+   * Optional and unread: the routes reach memory only through the runner, which
+   * binds it to the owner. Kept so the wiring can pass the memory service
+   * without a type error.
+   */
+  memory?: SessionMemory;
+  /** C10 source: short-term counters and recall counters. */
+  memoryStats: () => Promise<MemoryStatsSource>;
   tracer: AgentTracer;
   /**
    * C9 `llm_status` probe. Resolves true when Gemini answers GET {base}models.
@@ -60,10 +67,15 @@ export interface AgentRoutesOptions {
   probeLlm?: () => Promise<boolean>;
 }
 
-/** Input of runner.stream(): the contract input plus `created` (contract issue, see report). */
-type AgentStreamInput = Parameters<AgentRunner["stream"]>[0] & {
-  created: boolean;
-};
+type StreamInput = Parameters<AgentRunner["stream"]>[0];
+
+/** How a hijacked SSE run ended. Written to the one completion log line. */
+type StreamStatus =
+  | "done"
+  | "error"
+  | "aborted"
+  | "no_terminal_event"
+  | "runner_failed";
 
 type ErrorData = Extract<AgentEvent, { event: "error" }>["data"];
 
@@ -189,10 +201,32 @@ function sendInvalid(reply: FastifyReply, error: z.ZodError) {
   });
 }
 
-function writeEvent(raw: ServerResponse, ev: AgentEvent): void {
+/**
+ * Writes one SSE frame and waits when the socket buffer is full, so the runner
+ * is not pulled faster than the client reads. The wait also ends on `close`,
+ * because a client that has gone away never emits `drain`.
+ */
+async function writeEvent(raw: ServerResponse, ev: AgentEvent): Promise<void> {
   // A client that has gone away cannot receive events; the abort path handles the run.
   if (raw.destroyed || raw.writableEnded) return;
-  raw.write(`event: ${ev.event}\ndata: ${JSON.stringify(ev.data)}\n\n`);
+  const flushed = raw.write(
+    `event: ${ev.event}\ndata: ${JSON.stringify(ev.data)}\n\n`,
+  );
+  if (flushed) return;
+  await new Promise<void>((resolve) => {
+    const done = () => {
+      raw.off("drain", done);
+      raw.off("close", done);
+      resolve();
+    };
+    raw.on("drain", done);
+    raw.on("close", done);
+  });
+}
+
+/** Class name only. Messages can carry a URL or a key, so they are never logged. */
+function errorClass(err: unknown): string {
+  return err instanceof Error ? err.constructor.name : typeof err;
 }
 
 function toListItem(m: SessionMeta) {
@@ -222,24 +256,45 @@ function toTurn(t: Turn) {
   };
 }
 
-function toInput(body: RunBody, session: ResolvedSession): AgentStreamInput {
+function toInput(
+  body: RunBody,
+  session: ResolvedSession,
+  owner: string,
+): StreamInput {
   return {
     query: body.query,
     sessionId: session.sessionId,
+    owner,
+    created: session.created,
     mode: body.mode ?? "auto",
     filters: body.filters,
-    created: session.created,
   };
 }
 
+/**
+ * C9 probe. A timeout or a rejection both report `disconnected`: the probe
+ * answered "no" and the route still answers 200. The reason is logged at warn
+ * (the class name only, never the message).
+ */
 async function probeWithTimeout(
   probe: () => Promise<boolean>,
   log: FastifyBaseLogger,
 ): Promise<boolean> {
   let timer: ReturnType<typeof setTimeout> | undefined;
+  const attempt = (async (): Promise<boolean> => {
+    try {
+      return await probe();
+    } catch (err) {
+      log.warn(
+        { error_class: errorClass(err) },
+        "agent info: llm probe failed, reporting disconnected",
+      );
+      return false;
+    }
+  })();
   try {
     const winner = await Promise.race([
-      probe(),
+      attempt,
       new Promise<typeof LLM_PROBE_TIMED_OUT>((resolve) => {
         timer = setTimeout(
           () => resolve(LLM_PROBE_TIMED_OUT),
@@ -376,6 +431,8 @@ export async function agentRoutes(
     const sessionId = session.sessionId;
     const raw = reply.raw;
     const abort = new AbortController();
+    const startedAt = Date.now();
+    let status: StreamStatus = "runner_failed";
     busy.add(sessionId);
     const unwatch = watchClient(raw, abort, request.log, sessionId);
     try {
@@ -394,27 +451,34 @@ export async function agentRoutes(
 
       let terminal = false;
       for await (const ev of runner.stream(
-        toInput(parsed.data, session),
+        toInput(parsed.data, session, request.owner),
         abort.signal,
       )) {
-        writeEvent(raw, ev);
+        await writeEvent(raw, ev);
         if (ev.event === "done" || ev.event === "error") {
           terminal = true;
+          status = ev.event;
           break;
         }
       }
-      if (!terminal && !abort.signal.aborted) {
-        request.log.error(
-          { session_id: sessionId },
-          "agent runner ended without a terminal event",
-        );
-        writeEvent(raw, {
-          event: "error",
-          data: { code: "internal", detail: "stream ended without a result" },
-        });
+      if (!terminal) {
+        if (abort.signal.aborted) {
+          status = "aborted";
+        } else {
+          status = "no_terminal_event";
+          request.log.error(
+            { session_id: sessionId },
+            "agent runner ended without a terminal event",
+          );
+          await writeEvent(raw, {
+            event: "error",
+            data: { code: "internal", detail: "stream ended without a result" },
+          });
+        }
       }
     } catch (err) {
       if (abort.signal.aborted) {
+        status = "aborted";
         request.log.info(
           { session_id: sessionId },
           "agent stream stopped after client abort",
@@ -424,7 +488,7 @@ export async function agentRoutes(
           { err, session_id: sessionId },
           "agent runner failed mid-stream",
         );
-        writeEvent(raw, {
+        await writeEvent(raw, {
           event: "error",
           data: { code: "internal", detail: "agent run failed" },
         });
@@ -433,6 +497,10 @@ export async function agentRoutes(
       unwatch();
       busy.delete(sessionId);
       if (!raw.writableEnded) raw.end();
+      request.log.info(
+        { session_id: sessionId, status, duration_ms: Date.now() - startedAt },
+        "agent stream finished",
+      );
     }
     return reply;
   });
@@ -459,7 +527,7 @@ export async function agentRoutes(
     const steps: AgentStep[] = [];
     try {
       for await (const ev of runner.stream(
-        toInput(parsed.data, session),
+        toInput(parsed.data, session, request.owner),
         abort.signal,
       )) {
         if (ev.event === "step") steps.push(ev.data);
@@ -543,11 +611,30 @@ export async function agentRoutes(
       if (!UUID_RE.test(id)) {
         return reply.code(404).send({ error: "session_not_found" });
       }
-      const removed = await store.softDelete(request.owner, id);
-      if (!removed) {
+      const owner = request.owner;
+      // Ownership and visibility first: a foreign or hidden id gets 404, never 409.
+      const meta = await store.get(owner, id);
+      if (meta === null) {
         return reply.code(404).send({ error: "session_not_found" });
       }
-      await runner.forgetSession(id);
+      // A run in flight refuses the delete (K10). Checked and marked with no
+      // await in between, and the mark is held until the delete finishes.
+      if (busy.has(id)) {
+        return reply.code(409).send({ error: "session_busy" });
+      }
+      busy.add(id);
+      try {
+        // Forget first: if forgetting fails, nothing is deleted and the
+        // failure is a 500. Soft-deleting first would hide the session and
+        // then report 500 for a delete that already happened.
+        await runner.forgetSession(id);
+        const removed = await store.softDelete(owner, id);
+        if (!removed) {
+          return reply.code(404).send({ error: "session_not_found" });
+        }
+      } finally {
+        busy.delete(id);
+      }
       return reply.send({ session_id: id, deleted: true, mode: "soft" });
     },
   );
@@ -653,6 +740,16 @@ export async function agentRoutes(
   // C10 GET /agent/memory/stats
   // --------------------------------------------------------------------------
   fastify.get("/agent/memory/stats", async (_request, reply) => {
-    return reply.send(await memoryStats());
+    const mem = await memoryStats();
+    const counts = await store.counts();
+    return reply.send({
+      short_term: mem.short_term,
+      store: {
+        sessions: counts.sessions,
+        records: counts.records,
+        hidden: counts.hidden,
+      },
+      recall: mem.recall,
+    });
   });
 }

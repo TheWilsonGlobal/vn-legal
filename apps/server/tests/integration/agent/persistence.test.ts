@@ -96,6 +96,27 @@ describe("AC 20: persistence across a server restart", () => {
       live.json.sessions.find((s: any) => s.session_id === sid)?.active,
     ).toBe(true);
 
+    // AC 23: C10 reflects the dead-LLM run. This is the first test in a fresh
+    // sessions dir, so the store counts are exact: one session, every record
+    // of the file, nothing hidden.
+    const stats = await new Client(s1.base, owner).get(
+      "/api/agent/memory/stats",
+    );
+    expect(stats.status, stats.text).toBe(200);
+    expect(stats.json.store).toEqual({
+      sessions: 1,
+      records: recs.length,
+      hidden: 0,
+    });
+    expect(stats.json.short_term.active_sessions).toBeGreaterThanOrEqual(1);
+    // Whether a failed (ok:false) turn enters the sliding window is not fixed
+    // by the plan or contract.ts, so `turns` is bounded, not pinned to 1.
+    expect(Number.isInteger(stats.json.short_term.turns)).toBe(true);
+    expect(stats.json.short_term.turns).toBeGreaterThanOrEqual(0);
+    expect(stats.json.short_term.turns).toBeLessThanOrEqual(
+      stats.json.short_term.max_turns * stats.json.short_term.active_sessions,
+    );
+
     await s1.stop();
 
     const s2 = await startReadyServer({

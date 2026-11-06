@@ -12,6 +12,16 @@
  * array so it could not add rows even if the guard were missing; any file it
  * wrote under data/ is removed.
  *
+ * Why the upload probe cannot use an isolated graph: the server takes the graph
+ * store path from `config.graphDbPath` = <cwd>/storage/graph.cgraph with no env
+ * override (apps/server/src/shared/config.ts:80), and the data file from
+ * <cwd>/data. Only the vector store path (CONGRAPH_VECTOR_DB_PATH) is
+ * overridable, and that one IS the temp copy. With `content: []` the route
+ * writes an empty JSON array and addGraph/addIndex have nothing to insert, so
+ * even a missing guard leaves the real graph store without new nodes; the
+ * residual effect, an empty data/lock-probe.json, is asserted absent and
+ * removed in afterAll.
+ *
  * The AC 39 positive check uses a separate server on the real path and makes
  * no destructive call. The chat LLM is a dead port with a fake key in both.
  */
@@ -81,6 +91,13 @@ describe("AC 41: a store with a manifest is locked against the legacy builder", 
     const added = server.log().slice(logBefore);
     expect(added).not.toMatch(/re-?index(ing)? (started|completed|complete)/i);
     expect(added).not.toMatch(/clearAll|cleared/i);
+    // Strict: NO [ERROR] line may appear after the request. The only request in
+    // this window is the rebuild-vector POST; the ERROR emitters reachable from
+    // it are system.routes.ts:50 and :91 (a rebuild that started and failed),
+    // which must not run. The dead-LLM probe errors (agent.ts:716,
+    // health.ts:65/:121) fire only on /api/agent/info or /health requests,
+    // which this test never sends, and the server has no timers, so there is
+    // no expected unrelated ERROR line to exclude.
     expect(added).not.toMatch(/\[ERROR\]/);
   });
 

@@ -1,0 +1,921 @@
+{
+  "meta": {
+    "version": 1,
+    "language": "vi",
+    "declared_total": 58,
+    "declared_counts": {
+      "seed": 16,
+      "multi_hop": 6,
+      "global": 4,
+      "explicit_article": 5,
+      "small_talk": 3,
+      "recall_basic": 4,
+      "recall_fresh": 3,
+      "recall_far": 2,
+      "followup_window": 4,
+      "isolation": 3,
+      "false_trigger": 8
+    },
+    "labelling": "gold_articles are article_number values of data/Docs/Vietnam Civil Law.json. seed: copied from retrieval-dataset.json. multi_hop: gold contains an article whose text cites another gold article (Điều N). explicit_article: the query names the gold article. global: gold_chapter gives the chapter label and its first/last article_number in the corpus. followup_window: gold is the referent article and its neighbours. recall_*, isolation, small_talk: no gold articles. false_trigger: wording contains recall-like words but asks a legal question (detectRecallIntent must be false)."
+  },
+  "cases": [
+    {
+      "id": "seed-validity-cond",
+      "type": "seed",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Điều kiện có hiệu lực của giao dịch dân sự là gì?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [117]
+    },
+    {
+      "id": "seed-form",
+      "type": "seed",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Hình thức của giao dịch dân sự",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [119]
+    },
+    {
+      "id": "seed-void-fake",
+      "type": "seed",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Giao dịch dân sự vô hiệu do giả tạo",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [124]
+    },
+    {
+      "id": "seed-void-consequence",
+      "type": "seed",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Hậu quả pháp lý của giao dịch dân sự vô hiệu",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [131]
+    },
+    {
+      "id": "seed-legal-capacity",
+      "type": "seed",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Năng lực pháp luật dân sự của cá nhân",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [16]
+    },
+    {
+      "id": "seed-representation-term",
+      "type": "seed",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Thời hạn đại diện",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [140]
+    },
+    {
+      "id": "seed-contract-limitation",
+      "type": "seed",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Thời hiệu khởi kiện về hợp đồng",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [429]
+    },
+    {
+      "id": "seed-inheritance-limitation",
+      "type": "seed",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Thời hiệu thừa kế",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [623]
+    },
+    {
+      "id": "seed-disinherit",
+      "type": "seed",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Người không được quyền hưởng di sản",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [621]
+    },
+    {
+      "id": "seed-statutory-heirs",
+      "type": "seed",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Những trường hợp thừa kế theo pháp luật",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [650]
+    },
+    {
+      "id": "seed-will-maker",
+      "type": "seed",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Người lập di chúc có quyền gì",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [625, 626]
+    },
+    {
+      "id": "seed-sale-contract",
+      "type": "seed",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Hợp đồng mua bán tài sản",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [430]
+    },
+    {
+      "id": "seed-high-danger-damage",
+      "type": "seed",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Bồi thường thiệt hại do nguồn nguy hiểm cao độ gây ra",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [601]
+    },
+    {
+      "id": "seed-unauthorised-work",
+      "type": "seed",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Thực hiện công việc không có ủy quyền",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [574]
+    },
+    {
+      "id": "seed-obligation-security",
+      "type": "seed",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Biện pháp bảo đảm thực hiện nghĩa vụ",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [292]
+    },
+    {
+      "id": "seed-ownership-protection",
+      "type": "seed",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Bảo vệ quyền sở hữu tài sản",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [163]
+    },
+    {
+      "id": "mh-inheritance-possession",
+      "type": "multi_hop",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Khi hết thời hiệu thừa kế mà không có người quản lý di sản, người đang chiếm hữu di sản có được xác lập quyền sở hữu không và theo điều kiện nào?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [623, 236],
+      "expected_first_tool": "traverse_references"
+    },
+    {
+      "id": "mh-representation-end",
+      "type": "multi_hop",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Đại diện chấm dứt khi người đại diện không còn đủ điều kiện, điều kiện đó là gì?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [140, 134],
+      "expected_first_tool": "traverse_references"
+    },
+    {
+      "id": "mh-contract-termination",
+      "type": "multi_hop",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Hợp đồng chấm dứt khi hoàn cảnh thay đổi cơ bản thì việc thực hiện hợp đồng được xử lý như thế nào?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [422, 420],
+      "expected_first_tool": "traverse_references"
+    },
+    {
+      "id": "mh-adopted-child-heir",
+      "type": "multi_hop",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Con nuôi được thừa kế di sản của cha nuôi, mẹ nuôi theo hàng thừa kế nào?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [653, 651, 652],
+      "expected_first_tool": "traverse_references"
+    },
+    {
+      "id": "mh-forced-heir",
+      "type": "multi_hop",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Con chưa thành niên có được hưởng di sản khi di chúc truất quyền, và những ai không được hưởng di sản?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [644, 621],
+      "expected_first_tool": "traverse_references"
+    },
+    {
+      "id": "mh-guardianship-end",
+      "type": "multi_hop",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Việc giám hộ chấm dứt trong những trường hợp nào và hậu quả pháp lý ra sao?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [63, 62],
+      "expected_first_tool": "traverse_references"
+    },
+    {
+      "id": "global-ch3",
+      "type": "global",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Tóm tắt Chương III về cá nhân trong Bộ luật Dân sự.",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [],
+      "gold_chapter": {
+        "label": "III",
+        "first": 16,
+        "last": 73
+      },
+      "expected_first_tool": "get_community_context"
+    },
+    {
+      "id": "global-ch8",
+      "type": "global",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Tóm tắt chương về giao dịch dân sự.",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [],
+      "gold_chapter": {
+        "label": "VIII",
+        "first": 116,
+        "last": 133
+      },
+      "expected_first_tool": "get_community_context"
+    },
+    {
+      "id": "global-ch10",
+      "type": "global",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Tóm tắt chương X về thời hạn và thời hiệu.",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [],
+      "gold_chapter": {
+        "label": "X",
+        "first": 144,
+        "last": 157
+      },
+      "expected_first_tool": "get_community_context"
+    },
+    {
+      "id": "global-ch23",
+      "type": "global",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Tóm tắt chương về thừa kế theo pháp luật.",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [],
+      "gold_chapter": {
+        "label": "XXIII",
+        "first": 649,
+        "last": 655
+      },
+      "expected_first_tool": "get_community_context"
+    },
+    {
+      "id": "explicit-dieu-8",
+      "type": "explicit_article",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Điều 8 Bộ luật Dân sự quy định những gì?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [8],
+      "expected_first_tool": "get_article"
+    },
+    {
+      "id": "explicit-dieu-117",
+      "type": "explicit_article",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Điều 117 Bộ luật Dân sự quy định những gì?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [117],
+      "expected_first_tool": "get_article"
+    },
+    {
+      "id": "explicit-dieu-429",
+      "type": "explicit_article",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Điều 429 Bộ luật Dân sự quy định những gì?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [429],
+      "expected_first_tool": "get_article"
+    },
+    {
+      "id": "explicit-dieu-624",
+      "type": "explicit_article",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Điều 624 Bộ luật Dân sự quy định những gì?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [624],
+      "expected_first_tool": "get_article"
+    },
+    {
+      "id": "explicit-dieu-651",
+      "type": "explicit_article",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Điều 651 Bộ luật Dân sự quy định những gì?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [651],
+      "expected_first_tool": "get_article"
+    },
+    {
+      "id": "smalltalk-hello",
+      "type": "small_talk",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Xin chào!",
+          "route": "smalltalk"
+        }
+      ],
+      "gold_articles": []
+    },
+    {
+      "id": "smalltalk-who",
+      "type": "small_talk",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Bạn là ai và bạn có thể giúp tôi việc gì?",
+          "route": "smalltalk"
+        }
+      ],
+      "gold_articles": []
+    },
+    {
+      "id": "smalltalk-thanks",
+      "type": "small_talk",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Cảm ơn bạn nhé.",
+          "route": "smalltalk"
+        }
+      ],
+      "gold_articles": []
+    },
+    {
+      "id": "recall-basic-25",
+      "type": "recall_basic",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Quyền nhân thân theo Điều 25 là gì?",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Tôi vừa hỏi về điều nào?",
+          "route": "recall"
+        }
+      ],
+      "gold_articles": [],
+      "answer_names": [25]
+    },
+    {
+      "id": "recall-basic-46",
+      "type": "recall_basic",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Giám hộ được quy định ở Điều 46 như thế nào?",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Lúc nãy tôi hỏi gì vậy?",
+          "route": "recall"
+        }
+      ],
+      "gold_articles": [],
+      "answer_names": [46]
+    },
+    {
+      "id": "recall-basic-117",
+      "type": "recall_basic",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Điều 117 quy định điều kiện có hiệu lực của giao dịch dân sự thế nào?",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Nhắc lại câu hỏi vừa rồi của tôi.",
+          "route": "recall"
+        }
+      ],
+      "gold_articles": [],
+      "answer_names": [117]
+    },
+    {
+      "id": "recall-basic-623",
+      "type": "recall_basic",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Thời hiệu thừa kế theo Điều 623 là bao lâu?",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Tôi đã hỏi gì lần trước?",
+          "route": "recall"
+        }
+      ],
+      "gold_articles": [],
+      "answer_names": [623]
+    },
+    {
+      "id": "recall-fresh-vi1",
+      "type": "recall_fresh",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Tôi đã hỏi gì trước đó?",
+          "route": "recall"
+        }
+      ],
+      "gold_articles": []
+    },
+    {
+      "id": "recall-fresh-vi2",
+      "type": "recall_fresh",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Lúc nãy tôi hỏi gì vậy?",
+          "route": "recall"
+        }
+      ],
+      "gold_articles": []
+    },
+    {
+      "id": "recall-fresh-en",
+      "type": "recall_fresh",
+      "turns": [
+        {
+          "session": "main",
+          "query": "What did I ask earlier?",
+          "route": "recall"
+        }
+      ],
+      "gold_articles": []
+    },
+    {
+      "id": "recall-far-1",
+      "type": "recall_far",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Điều kiện có hiệu lực của giao dịch dân sự là gì?",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Hình thức của giao dịch dân sự",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Giao dịch dân sự vô hiệu do giả tạo",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Hậu quả pháp lý của giao dịch dân sự vô hiệu",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Năng lực pháp luật dân sự của cá nhân",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Thời hạn đại diện",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Thời hiệu thừa kế",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Người không được quyền hưởng di sản",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Những trường hợp thừa kế theo pháp luật",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Hợp đồng mua bán tài sản",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Câu hỏi đầu tiên của tôi là gì?",
+          "route": "recall"
+        }
+      ],
+      "gold_articles": [],
+      "recall_target_turn": 0
+    },
+    {
+      "id": "recall-far-2",
+      "type": "recall_far",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Bồi thường thiệt hại do nguồn nguy hiểm cao độ gây ra",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Quyền có họ, tên của cá nhân",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Quyền thay đổi tên",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Nơi cư trú của cá nhân",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Điều kiện của cá nhân làm người giám hộ",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Quản lý tài sản của người vắng mặt tại nơi cư trú",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Tuyên bố chết",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Pháp nhân là gì",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Tài sản bao gồm những gì",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Chiếm hữu ngay tình",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Tôi đã hỏi câu đầu tiên là gì?",
+          "route": "recall"
+        }
+      ],
+      "gold_articles": [],
+      "recall_target_turn": 0
+    },
+    {
+      "id": "followup-guardian",
+      "type": "followup_window",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Giám hộ là gì theo Điều 46?",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Người đó có nghĩa vụ gì?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [46, 48, 55, 56, 57, 58, 59]
+    },
+    {
+      "id": "followup-will",
+      "type": "followup_window",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Người lập di chúc có quyền gì?",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Họ có thể hủy bỏ nó sau khi lập không?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [625, 626, 640]
+    },
+    {
+      "id": "followup-sale",
+      "type": "followup_window",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Hợp đồng mua bán tài sản được quy định ở Điều 430 như thế nào?",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Việc giao tài sản đó diễn ra ở đâu?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [430, 435, 436]
+    },
+    {
+      "id": "followup-limitation",
+      "type": "followup_window",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Thời hiệu khởi kiện về hợp đồng là bao lâu?",
+          "route": "legal"
+        },
+        {
+          "session": "main",
+          "query": "Thời hiệu đó bắt đầu tính từ lúc nào?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [429, 154, 151]
+    },
+    {
+      "id": "isolation-name",
+      "type": "isolation",
+      "turns": [
+        {
+          "session": "A",
+          "query": "Ông Lê Hoàng Tuấn muốn đổi họ theo Điều 27 thì cần thủ tục gì?",
+          "route": "legal"
+        },
+        {
+          "session": "B",
+          "query": "Tôi đã hỏi gì trước đó?",
+          "route": "recall"
+        }
+      ],
+      "gold_articles": [],
+      "leak_markers": ["Lê Hoàng Tuấn"],
+      "leak_topics": ["đổi họ", "Điều 27"]
+    },
+    {
+      "id": "isolation-missing",
+      "type": "isolation",
+      "turns": [
+        {
+          "session": "A",
+          "query": "Bà Phạm Thị Ngọc Diệp bị tuyên bố mất tích thì tài sản được quản lý ra sao?",
+          "route": "legal"
+        },
+        {
+          "session": "B",
+          "query": "Lúc nãy tôi hỏi gì vậy?",
+          "route": "recall"
+        }
+      ],
+      "gold_articles": [],
+      "leak_markers": ["Phạm Thị Ngọc Diệp"],
+      "leak_topics": ["mất tích"]
+    },
+    {
+      "id": "isolation-company",
+      "type": "isolation",
+      "turns": [
+        {
+          "session": "A",
+          "query": "Công ty Hải Âu Xanh giao hàng sai chủng loại thì chịu trách nhiệm gì?",
+          "route": "legal"
+        },
+        {
+          "session": "B",
+          "query": "Nhắc lại câu hỏi vừa rồi của tôi.",
+          "route": "recall"
+        }
+      ],
+      "gold_articles": [],
+      "leak_markers": ["Hải Âu Xanh"],
+      "leak_topics": ["sai chủng loại", "Điều 439"]
+    },
+    {
+      "id": "false-trigger-clause-first",
+      "type": "false_trigger",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Câu đầu tiên của khoản 2 Điều 5 là gì?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [5]
+    },
+    {
+      "id": "false-trigger-notice",
+      "type": "false_trigger",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Phải thông báo trước bao lâu khi chấm dứt hợp đồng?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [428]
+    },
+    {
+      "id": "false-trigger-representative",
+      "type": "false_trigger",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Người đại diện phải báo trước cho người được đại diện khi nào?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": []
+    },
+    {
+      "id": "false-trigger-payment-order",
+      "type": "false_trigger",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Người mua phải trả tiền trước hay nhận hàng trước trong hợp đồng mua bán?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": []
+    },
+    {
+      "id": "false-trigger-i-ask",
+      "type": "false_trigger",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Tôi muốn hỏi về điều kiện lập di chúc của người chưa đủ mười tám tuổi.",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": [625, 630]
+    },
+    {
+      "id": "false-trigger-earlier-deadline",
+      "type": "false_trigger",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Thời hạn thanh toán trước đó của hợp đồng mua bán được tính thế nào?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": []
+    },
+    {
+      "id": "false-trigger-investment",
+      "type": "false_trigger",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Câu hỏi đầu tư vào doanh nghiệp có thuộc phạm vi Bộ luật Dân sự không?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": []
+    },
+    {
+      "id": "false-trigger-damage-before",
+      "type": "false_trigger",
+      "turns": [
+        {
+          "session": "main",
+          "query": "Quyền yêu cầu bồi thường của người bị thiệt hại trước đây có còn thời hiệu không?",
+          "route": "legal"
+        }
+      ],
+      "gold_articles": []
+    }
+  ]
+}

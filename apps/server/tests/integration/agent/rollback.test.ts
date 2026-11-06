@@ -112,6 +112,33 @@ describe("AC 42: rollback drill on a COPY of the old store", () => {
     300_000,
   );
 
+  it("AC 39 hash check: the old store files in RB1's PRE-RUN list have the same size and SHA-256 as RB1 recorded before it wrote the legacy manifest", () => {
+    // Fails (never skips) when the list is not supplied: without it this test
+    // would only compare the store with itself, which proves nothing about RB1.
+    const listPath = process.env.RB1_PRERUN_HASHES;
+    expect(
+      listPath,
+      "set RB1_PRERUN_HASHES to RB1's pre-run list (lines: name<TAB>size<TAB>sha256, first line a header)",
+    ).toBeTruthy();
+    expect(fs.existsSync(listPath!), `${listPath} must exist`).toBe(true);
+    const rows = fs
+      .readFileSync(listPath!, "utf8")
+      .split(/\r?\n/)
+      .map((l) => l.split("\t"))
+      .filter((c) => c.length === 3 && /^[0-9a-f]{64}$/.test(c[2]));
+    expect(rows.length, "pre-run list has no hash rows").toBeGreaterThan(0);
+    expect(
+      rows.map((c) => c[0]),
+      "the list must cover the main store file",
+    ).toContain("congraph_vectors.cgraph");
+    for (const [name, size, sha] of rows) {
+      const file = path.join(storage, name);
+      expect(fs.existsSync(file), `${name} must still exist`).toBe(true);
+      expect(String(fs.statSync(file).size), `${name} size`).toBe(size);
+      expect(sha256File(file), `${name} sha256`).toBe(sha);
+    }
+  });
+
   it("the original old store files have the same SHA-256 as before the drill", () => {
     const after = hashOriginals(Object.keys(hashesBefore));
     expect(after).toEqual(hashesBefore);

@@ -149,8 +149,8 @@ describe("AC 36: HTTP 429 from upstream", () => {
       stub.posts().length - before,
       "upstream POSTs = 1 + GEMINI_MAX_RETRIES",
     ).toBe(3);
-    // 10 s retry budget plus generous process overhead
-    expect(r.elapsedMs).toBeLessThan(25_000);
+    // 10 s retry budget plus a little process overhead (AC 36: "within the 10 s")
+    expect(r.elapsedMs).toBeLessThan(12_000);
 
     const warnLines = server
       .log()
@@ -260,12 +260,14 @@ describe("AC 6: aborting the client ends the server run", () => {
       () => stub.posts().length >= 1,
       30_000,
     );
+    // Only log text written AFTER the abort counts as evidence of the abort.
+    const logOffset = server.log().length;
     ac.abort();
     await pending;
 
     await waitFor(
       "server log shows the run was aborted",
-      () => /abort/i.test(server.log()),
+      () => /abort/i.test(server.log().slice(logOffset)),
       15_000,
     );
     await waitFor(
@@ -304,15 +306,36 @@ describe("AC 6: aborting the client ends the server run", () => {
     expect(busy.status, busy.raw).toBe(409);
     expect(busy.json?.error).toBe("session_busy");
 
+    // C6 during an active run: 409 session_busy, and the session is not deleted.
+    const delBusy = await c.del(`/api/agent/sessions/${sessionId}`);
+    expect(delBusy.status, delBusy.text).toBe(409);
+    expect(delBusy.json?.error).toBe("session_busy");
+    expect(
+      (await c.get(`/api/agent/sessions/${sessionId}`)).status,
+      "a refused delete must leave the session visible",
+    ).toBe(200);
+
     ac.abort();
     await first;
     await sleep(3000);
     // Not 409 any more. The upstream stub never answers, so an accepted run
-    // simply times out on our side: that is the "lock is free" signal.
+    // simply times out on our side: that is the "lock is free" signal. ONLY
+    // the client-side timeout counts as accepted; a refused connection, a 404
+    // or a 500 must fail the test, so every other error is rethrown.
     const outcome = await c
       .post("/api/agent/run", { query: Q_ART25, session_id: sessionId }, 2500)
       .then((r) => r.status)
-      .catch(() => "accepted");
-    expect(outcome).not.toBe(409);
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name === "TimeoutError")
+          return "accepted";
+        throw err;
+      });
+    expect(
+      server.hasExited(),
+      `server must still be running; log tail:\n${tail(server.log())}`,
+    ).toBe(false);
+    // The hanging upstream never answers, so any HTTP status here (409, 404,
+    // 500, even 200) means the run did not behave as an accepted, hanging run.
+    expect(outcome === "accepted", `run answered with ${outcome}`).toBe(true);
   }, 120_000);
 });

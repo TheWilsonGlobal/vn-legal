@@ -169,6 +169,7 @@ export interface SessionMeta {
   last_active_at: string;
   turns: number;
   record_count: number;
+  // Estimate, computed with the memory module's countTokens. No token source is persisted.
   tokens: number;
   active: boolean;
 }
@@ -184,6 +185,15 @@ export type SessionRecord = {
   content: string;
   ok?: boolean;
   trace_id?: string | null;
+  // Step records written by the runner MUST carry index, tool_input, duration_ms and
+  // citations. The store replays them as stored. The fields are optional only so that
+  // records written before these fields existed still parse.
+  index?: number;
+  // Same type as AgentStep.tool_input so a step record round-trips to an AgentStep.
+  tool_input?: AgentStep["tool_input"];
+  duration_ms?: number;
+  citations?: Citation[];
+  trace_url?: string | null; // written on `answer` and `error` records
   prev_hash?: string;
   row_hash?: string;
 };
@@ -211,6 +221,8 @@ export interface SessionStore {
     records: number;
     first_bad: { session_id: string; line: number } | null;
   }>; // decision Q13
+  // Global counts across all owners (feeds C10 `store`).
+  counts(): Promise<{ sessions: number; records: number; hidden: number }>;
 }
 
 export type ObservabilityStatus = {
@@ -277,6 +289,10 @@ export interface AgentRunner {
     input: {
       query: string;
       sessionId: string;
+      // The route resolved or created the session and passes owner and created.
+      // The runner binds memory to the owner.
+      owner: string;
+      created: boolean;
       mode?: "auto" | "local" | "global";
       filters?: Filters;
     },

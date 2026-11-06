@@ -109,6 +109,9 @@ describe("AC 5: DELETE is soft", () => {
     expect(listed.status).toBe(200);
     expect(listed.json.sessions.map((s: any) => s.session_id)).toContain(id);
 
+    const statsBefore = await owner1.get("/api/agent/memory/stats");
+    expect(statsBefore.status, statsBefore.text).toBe(200);
+
     const del = await owner1.del(`/api/agent/sessions/${id}`);
     expect(del.status, del.text).toBe(200);
     expect(del.json).toMatchObject({
@@ -121,6 +124,19 @@ describe("AC 5: DELETE is soft", () => {
     expect(fs.existsSync(file), `${file} must still exist`).toBe(true);
     const recs = readJsonl(file);
     expect(recs.at(-1)?.kind).toBe("deleted");
+
+    // C10 store block (X8): visible sessions drop by one, hidden rises by one,
+    // and records (all, hidden included) never shrink.
+    const statsAfter = await owner1.get("/api/agent/memory/stats");
+    expect(statsAfter.json.store.sessions).toBe(
+      statsBefore.json.store.sessions - 1,
+    );
+    expect(statsAfter.json.store.hidden).toBe(
+      statsBefore.json.store.hidden + 1,
+    );
+    expect(statsAfter.json.store.records).toBeGreaterThanOrEqual(
+      statsBefore.json.store.records,
+    );
 
     expect((await owner1.get(`/api/agent/sessions/${id}`)).status).toBe(404);
     const after = await owner1.get("/api/agent/sessions");

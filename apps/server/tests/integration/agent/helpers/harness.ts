@@ -50,15 +50,17 @@ export const Q_ART25 = "Quyền nhân thân theo Điều 25 là gì?";
 // literal prefixes (the AC 32/40 git grep scans the whole tree, tests too).
 // ---------------------------------------------------------------------------
 const P_GOOGLE = "AI" + "za";
-const P_GOOGLE_OAUTH = "AQ" + "\\.";
+// Anchored: a bare `AQ\.` also matches "FAQ." in prose. The prefix must not be
+// preceded by a letter, digit or underscore (deviation from the plan's literal
+// regex, recorded in README.md).
+const P_GOOGLE_OAUTH = "(^|[^A-Za-z0-9_])AQ" + "\\.";
 const P_LF_SECRET = "sk-" + "lf-";
 const P_LF_PUBLIC = "pk-" + "lf-";
-export const KEY_GREP_ERE = [
-  P_LF_SECRET,
-  P_LF_PUBLIC,
-  P_GOOGLE,
-  P_GOOGLE_OAUTH,
-].join("|");
+/** AC 32 pattern (git grep -E). */
+export const LANGFUSE_GREP_ERE = [P_LF_SECRET, P_LF_PUBLIC].join("|");
+/** AC 40 pattern (git grep -E). Alternatives are not split on "|" by callers. */
+export const GOOGLE_GREP_ERE = [P_GOOGLE, P_GOOGLE_OAUTH].join("|");
+export const KEY_GREP_ERE = [LANGFUSE_GREP_ERE, GOOGLE_GREP_ERE].join("|");
 export const KEY_SHAPES: RegExp[] = [
   new RegExp(P_GOOGLE),
   new RegExp(P_GOOGLE_OAUTH),
@@ -273,12 +275,15 @@ export async function spawnServer(opts: SpawnOptions): Promise<ServerHandle> {
         child.kill();
         const t = setTimeout(() => {
           if (!done && child.pid) {
-            try {
-              spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], {
-                windowsHide: true,
-              });
-            } catch {
-              /* ignore */
+            if (process.platform === "win32") {
+              try {
+                spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], {
+                  windowsHide: true,
+                  stdio: "ignore",
+                }).on("error", () => undefined);
+              } catch {
+                /* ignore */
+              }
             }
             try {
               child.kill("SIGKILL");

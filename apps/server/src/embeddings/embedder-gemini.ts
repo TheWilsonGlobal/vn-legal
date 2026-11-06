@@ -31,16 +31,26 @@ export class EmbeddingError extends Error {
   }
 }
 
-/** A 429 or 503 response, raised by the fetch wrapper so Retry-After survives. */
+/**
+ * A 429 or 503 response, raised by the fetch wrapper so Retry-After survives.
+ * `detail` is Google's status and message, already redacted; it is undefined
+ * when the body had none.
+ */
 export class RetryableHttpError extends Error {
   readonly status: number;
   readonly retryAfterMs: number | undefined;
+  readonly detail: string | undefined;
 
-  constructor(status: number, retryAfterMs: number | undefined) {
+  constructor(
+    status: number,
+    retryAfterMs: number | undefined,
+    detail?: string,
+  ) {
     super(`HTTP ${status}`);
     this.name = "RetryableHttpError";
     this.status = status;
     this.retryAfterMs = retryAfterMs;
+    this.detail = detail;
   }
 }
 
@@ -54,46 +64,151 @@ export function parseRetryAfterMs(value: string | null): number | undefined {
   return undefined;
 }
 
+const DETAIL_MAX_CHARS = 300;
+
+/**
+ * Google's status and message from an error body, as one line for the thrown
+ * error. The key and any URL are redacted; headers are never read into it.
+ * Returns undefined when the body is not JSON with an error object.
+ */
+function googleErrorDetail(
+  body: string,
+  secret: string | undefined,
+): string | undefined {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return undefined;
+  }
+  const error = errorField(parsed, "error");
+  const parts = [errorField(error, "status"), errorField(error, "message")]
+    .filter((part): part is string => typeof part === "string")
+    .map((part) => part.trim())
+    .filter((part) => part !== "");
+  if (parts.length === 0) return undefined;
+  return sanitizeDetail(parts.join(": "), secret);
+}
+
+function sanitizeDetail(text: string, secret: string | undefined): string {
+  let out = text.replace(/https?:\/\/\S+/g, "[url]");
+  if (secret) out = out.split(secret).join("[key]");
+  out = out.replace(/\s+/g, " ").trim();
+  return out.length > DETAIL_MAX_CHARS
+    ? `${out.slice(0, DETAIL_MAX_CHARS)}...`
+    : out;
+}
+
+function errorField(value: unknown, field: string): unknown {
+  if (typeof value !== "object" || value === null || !(field in value)) {
+    return undefined;
+  }
+  return (value as Record<string, unknown>)[field];
+}
+
 /**
  * Wraps fetch so a 429 or 503 surfaces as RetryableHttpError with its
- * Retry-After. The SDK's ApiError carries only the status, so without this the
- * header is lost. Other responses pass through unchanged.
+ * Retry-After and Google's message. The SDK's ApiError carries only the status,
+ * so without this the header and the message are lost. Other responses pass
+ * through unchanged. If the body cannot be read, only the message is lost; the
+ * status still drives the retry.
  */
-export function makeRetryAwareFetch(): (
-  input: string | URL | Request,
-  init?: RequestInit,
-) => Promise<Response> {
+export function makeRetryAwareFetch(
+  apiKey?: string,
+): (input: string | URL | Request, init?: RequestInit) => Promise<Response> {
   return async (input, init) => {
     const response = await globalThis.fetch(input, init);
     if (response.status === 429 || response.status === 503) {
-      await response.body?.cancel();
+      const body = await response.text().catch(() => "");
       throw new RetryableHttpError(
         response.status,
         parseRetryAfterMs(response.headers.get("retry-after")),
+        googleErrorDetail(body, apiKey),
       );
     }
     return response;
   };
 }
 
-/** A UTF-8 byte count above the token limit cannot be ruled out, so it is refused. */
+/**
+ * Conservative token estimate for the input limit. An exact count needs
+ * countTokens, which is a live call this embedder never makes, so the limit is
+ * checked against this estimate instead: one token per character, and four per
+ * character outside the Basic Multilingual Plane (a tokenizer may split those
+ * into their four UTF-8 bytes). It is an estimate, not a tokenizer count. The
+ * estimate is high for Vietnamese: RB1's measured count for the real corpus is
+ * about 0.3 tokens per character.
+ */
+export function estimateInputTokens(text: string): number {
+  let tokens = 0;
+  for (const character of text) {
+    tokens += (character.codePointAt(0) ?? 0) > 0xffff ? 4 : 1;
+  }
+  return tokens;
+}
+
 function assertWithinLimit(id: string, text: string): void {
-  const bytes = Buffer.byteLength(text, "utf-8");
-  if (bytes > GEMINI_MAX_INPUT_TOKENS) {
+  const estimate = estimateInputTokens(text);
+  if (estimate > GEMINI_MAX_INPUT_TOKENS) {
     throw new EmbeddingError(
-      `input ${id} is over the ${GEMINI_MAX_INPUT_TOKENS}-token embedding limit ` +
-        `(${bytes} UTF-8 bytes; the text is not truncated)`,
+      `input ${id} is over the ${GEMINI_MAX_INPUT_TOKENS}-token embedding limit: ` +
+        `estimated ${estimate} tokens (an estimate, not a tokenizer count; ` +
+        "the text is not truncated)",
     );
   }
 }
 
 function upstreamStatus(error: unknown): number | undefined {
   if (error instanceof RetryableHttpError) return error.status;
-  if (typeof error === "object" && error !== null && "status" in error) {
-    const status = (error as { status: unknown }).status;
-    if (typeof status === "number") return status;
-  }
+  const status = errorField(error, "status");
+  return typeof status === "number" ? status : undefined;
+}
+
+/** Google's message for a failed call, from the wrapper or from an SDK ApiError body. */
+function upstreamDetail(error: unknown, secret: string): string | undefined {
+  if (error instanceof RetryableHttpError) return error.detail;
+  if (error instanceof Error) return googleErrorDetail(error.message, secret);
   return undefined;
+}
+
+const NETWORK_ERROR_CODES = new Set([
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "ECONNABORTED",
+  "ETIMEDOUT",
+  "EPIPE",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_HEADERS_TIMEOUT",
+  "UND_ERR_BODY_TIMEOUT",
+  "UND_ERR_SOCKET",
+]);
+
+/**
+ * Connection-level failures only: fetch rejected, a timeout or abort, or a
+ * socket error. Anything else is not a network error and is not retried.
+ */
+function isNetworkError(error: unknown): boolean {
+  const name = errorField(error, "name");
+  if (name === "AbortError" || name === "TimeoutError") return true;
+  const message = errorField(error, "message");
+  if (typeof message === "string" && /^fetch failed/i.test(message)) {
+    return true;
+  }
+  const code =
+    errorField(error, "code") ?? errorField(errorField(error, "cause"), "code");
+  return typeof code === "string" && NETWORK_ERROR_CODES.has(code);
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/** Names the input, or the first and last id of a batch, in an error. */
+function chunkLabel(chunk: EmbedInput[]): string {
+  if (chunk.length === 1) return `input ${chunk[0].id}`;
+  return `${chunk.length} inputs (ids ${chunk[0].id} to ${chunk[chunk.length - 1].id})`;
 }
 
 function validateVector(values: unknown, id: string, dim: number): number[] {
@@ -155,8 +270,16 @@ export interface GeminiEmbedderOptions {
   sleep?: (ms: number) => Promise<void>;
 }
 
+/** One document for embedDocuments. `id` names the input in errors. */
+export interface GeminiDocument {
+  id: string;
+  title: string;
+  text: string;
+}
+
 export class GeminiEmbedder implements IEmbedder {
   private readonly ai: GoogleGenAI;
+  private readonly secret: string;
   private readonly model: string;
   private readonly dim: number;
   private readonly batchSize: number;
@@ -165,15 +288,17 @@ export class GeminiEmbedder implements IEmbedder {
   private ready = false;
 
   constructor(options: GeminiEmbedderOptions) {
-    if (!options.apiKey) {
+    const apiKey = options.apiKey;
+    if (!apiKey) {
       throw new EmbeddingError(
         "GEMINI_EMBEDDING_API_KEY is not set (required by EMBEDDING_PROVIDER=gemini)",
       );
     }
+    this.secret = apiKey;
     this.ai = new GoogleGenAI({
-      apiKey: options.apiKey,
+      apiKey,
       httpOptions: {
-        fetch: makeRetryAwareFetch(),
+        fetch: makeRetryAwareFetch(apiKey),
         timeout: REQUEST_TIMEOUT_MS,
       },
     });
@@ -247,6 +372,20 @@ export class GeminiEmbedder implements IEmbedder {
     );
   }
 
+  /**
+   * DOCUMENT path for many documents. Each chunk of batchSize inputs is one
+   * request, and each input is its own Content, so n documents cost
+   * ceil(n / batchSize) requests. Vectors come back in input order.
+   */
+  async embedDocuments(documents: GeminiDocument[]): Promise<number[][]> {
+    return this.embedInputs(
+      documents.map((doc) => ({
+        id: doc.id,
+        text: documentText(doc.title, doc.text),
+      })),
+    );
+  }
+
   private assertReady(): void {
     if (!this.ready) {
       throw new EmbeddingError(
@@ -272,7 +411,7 @@ export class GeminiEmbedder implements IEmbedder {
 
   private async embedChunk(chunk: EmbedInput[]): Promise<number[][]> {
     const response = await this.withRetry(
-      `embedContent(${chunk.length} inputs)`,
+      `embedContent for ${chunkLabel(chunk)}`,
       () =>
         this.ai.models.embedContent({
           model: this.model,
@@ -294,8 +433,9 @@ export class GeminiEmbedder implements IEmbedder {
 
   /**
    * Bounded retry, the same policy as the chat model (plan §5.3): 429, 503 and
-   * network errors retry at most MAX_RETRIES times, honouring Retry-After,
-   * within RETRY_BUDGET_MS. Every other status throws at once.
+   * connection-level errors (see isNetworkError) retry at most MAX_RETRIES
+   * times, honouring Retry-After, within RETRY_BUDGET_MS. Every other error
+   * throws at once. Each thrown error carries Google's message when there is one.
    */
   private async withRetry<T>(
     label: string,
@@ -308,16 +448,23 @@ export class GeminiEmbedder implements IEmbedder {
         return await call();
       } catch (error) {
         const status = upstreamStatus(error);
+        const detail = upstreamDetail(error, this.secret);
+        const suffix = detail === undefined ? "" : `: ${detail}`;
         if (status !== undefined && status !== 429 && status !== 503) {
           throw new EmbeddingError(
-            `Gemini ${label} failed with HTTP ${status}`,
+            `Gemini ${label} failed with HTTP ${status}${suffix}`,
             status,
+          );
+        }
+        if (status === undefined && !isNetworkError(error)) {
+          throw new EmbeddingError(
+            `Gemini ${label} failed: ${sanitizeDetail(errorMessage(error), this.secret)}`,
           );
         }
         const kind = status === undefined ? "network error" : `HTTP ${status}`;
         if (retry >= MAX_RETRIES) {
           throw new EmbeddingError(
-            `Gemini ${label} failed after ${MAX_RETRIES} retries (${kind})`,
+            `Gemini ${label} failed after ${MAX_RETRIES} retries (${kind}${suffix})`,
             status,
           );
         }
@@ -331,7 +478,7 @@ export class GeminiEmbedder implements IEmbedder {
           Date.now() - started + delayMs > RETRY_BUDGET_MS;
         if (overBudget) {
           throw new EmbeddingError(
-            `Gemini ${label} failed: retry budget of ${RETRY_BUDGET_MS} ms exhausted (${kind})`,
+            `Gemini ${label} failed: retry budget of ${RETRY_BUDGET_MS} ms exhausted (${kind}${suffix})`,
             status,
           );
         }
