@@ -270,6 +270,54 @@ export default function AssistantView(props: ViewProps) {
 
   const stop = () => abortRef.current?.abort();
 
+  const handleToggleSection = useCallback(
+    (key: string, section: "query" | "steps" | "answer") => {
+      setTurns((all) =>
+        all.map((t) => {
+          if (t.key !== key) return t;
+          if (section === "query") return { ...t, queryOpen: !(t.queryOpen ?? true) };
+          if (section === "steps") return { ...t, stepsOpen: !(t.stepsOpen ?? true) };
+          if (section === "answer") return { ...t, answerOpen: !(t.answerOpen ?? true) };
+          return t;
+        }),
+      );
+    },
+    [],
+  );
+
+  const expandAll = () => {
+    setTurns((all) =>
+      all.map((t) => ({ ...t, queryOpen: true, stepsOpen: true, answerOpen: true })),
+    );
+  };
+
+  const collapseAll = () => {
+    setTurns((all) =>
+      all.map((t) => ({ ...t, queryOpen: false, stepsOpen: false, answerOpen: false })),
+    );
+  };
+
+  const allQueriesOpen =
+    turns.length > 0 && turns.every((t) => t.queryOpen !== false);
+  const toggleAllQueries = () => {
+    const next = !allQueriesOpen;
+    setTurns((all) => all.map((t) => ({ ...t, queryOpen: next })));
+  };
+
+  const allStepsOpen =
+    turns.length > 0 && turns.every((t) => t.stepsOpen !== false);
+  const toggleAllSteps = () => {
+    const next = !allStepsOpen;
+    setTurns((all) => all.map((t) => ({ ...t, stepsOpen: next })));
+  };
+
+  const allAnswersOpen =
+    turns.length > 0 && turns.every((t) => t.answerOpen !== false);
+  const toggleAllAnswers = () => {
+    const next = !allAnswersOpen;
+    setTurns((all) => all.map((t) => ({ ...t, answerOpen: next })));
+  };
+
   const newSession = async () => {
     setPageError(null);
     try {
@@ -337,6 +385,59 @@ export default function AssistantView(props: ViewProps) {
         </div>
       )}
 
+      {turns.length > 0 && (
+        <div className="hierarchy-toolbar glass-card">
+          <span className="hierarchy-title">
+            <span aria-hidden="true">📑 </span>Cấu trúc ({turns.length} lượt):
+          </span>
+          <div className="hierarchy-actions">
+            <button
+              type="button"
+              className="btn-hierarchy"
+              onClick={expandAll}
+              title="Mở rộng tất cả câu hỏi, bước suy luận và câu trả lời"
+            >
+              <span aria-hidden="true">▾▾ </span>Mở rộng tất cả
+            </button>
+            <button
+              type="button"
+              className="btn-hierarchy"
+              onClick={collapseAll}
+              title="Thu gọn tất cả"
+            >
+              <span aria-hidden="true">▸▸ </span>Thu gọn tất cả
+            </button>
+            <button
+              type="button"
+              className={`btn-hierarchy${allQueriesOpen ? " active" : ""}`}
+              onClick={toggleAllQueries}
+              title="Bật/tắt hiển thị câu hỏi"
+            >
+              <span aria-hidden="true">{allQueriesOpen ? "▾ " : "▸ "}</span>
+              Câu hỏi
+            </button>
+            <button
+              type="button"
+              className={`btn-hierarchy${allStepsOpen ? " active" : ""}`}
+              onClick={toggleAllSteps}
+              title="Bật/tắt hiển thị các bước suy luận"
+            >
+              <span aria-hidden="true">{allStepsOpen ? "▾ " : "▸ "}</span>
+              Bước suy luận
+            </button>
+            <button
+              type="button"
+              className={`btn-hierarchy${allAnswersOpen ? " active" : ""}`}
+              onClick={toggleAllAnswers}
+              title="Bật/tắt hiển thị câu trả lời"
+            >
+              <span aria-hidden="true">{allAnswersOpen ? "▾ " : "▸ "}</span>
+              Câu trả lời
+            </button>
+          </div>
+        </div>
+      )}
+
       <div
         className="assistant-turns"
         role="region"
@@ -366,7 +467,12 @@ export default function AssistantView(props: ViewProps) {
           </p>
         )}
         {turns.map((t) => (
-          <TurnView key={t.key} turn={t} onOpenCitation={setOpenCitation} />
+          <TurnView
+            key={t.key}
+            turn={t}
+            onOpenCitation={setOpenCitation}
+            onToggleSection={handleToggleSection}
+          />
         ))}
         <div ref={endRef} />
       </div>

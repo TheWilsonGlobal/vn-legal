@@ -56,7 +56,98 @@
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.hierarchy-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
+  padding: 8px 14px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+.hierarchy-title {
+  color: var(--text-dim);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hierarchy-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.btn-hierarchy {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--text-main);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.btn-hierarchy:hover {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: rgba(99, 102, 241, 0.6);
+}
+
+.btn-hierarchy.active {
+  background: rgba(99, 102, 241, 0.3);
+  border-color: #818cf8;
+  color: #c7d2fe;
+}
+
+.turn-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.section-toggle {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font: inherit;
+  padding: 4px 6px;
+  margin-left: -6px;
+  min-height: 24px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.section-toggle:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.toggle-chevron {
+  color: #818cf8;
+  font-size: 0.88rem;
+  user-select: none;
+  display: inline-block;
+  min-width: 12px;
 }
 
 .turn-role {
@@ -64,6 +155,45 @@
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.assistant-role {
+  color: #c084fc;
+}
+
+.query-snippet,
+.answer-snippet {
+  font-size: 0.82rem;
+  font-style: italic;
+  color: var(--text-dim);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.turn-query-text {
+  margin-top: 2px;
+  padding-left: 12px;
+  border-left: 2px solid rgba(99, 102, 241, 0.3);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.step-head[role="button"] {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.step-head[role="button"]:hover {
+  filter: brightness(1.2);
+}
+
+.step-toggle-icon {
+  color: #818cf8;
+  font-size: 0.85rem;
+  margin-right: 2px;
 }
 
 .trace-toggle {

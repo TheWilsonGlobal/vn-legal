@@ -145,7 +145,7 @@ describe("ConGraphStorageAdapter", () => {
       expect(results).toHaveLength(1);
       expect(results[0].id).toBe("a1");
       // Score > 1 should be normalized to <= 1
-      expect(results[0].metadata.score).toBeLessThanOrEqual(1.0);
+      expect(results[0].metadata?.score).toBeLessThanOrEqual(1.0);
     });
 
     it("should handle scores <= 1 without normalization", async () => {
@@ -153,7 +153,7 @@ describe("ConGraphStorageAdapter", () => {
         { article_id: "a1", title: "A1", content: "C", score: 0.85 },
       ]);
       const results = await adapter.searchEntitiesByEmbedding([0.1], 5);
-      expect(results[0].metadata.score).toBe(0.85);
+      expect(results[0].metadata?.score).toBe(0.85);
     });
 
     it("should handle _score field", async () => {
@@ -161,7 +161,7 @@ describe("ConGraphStorageAdapter", () => {
         { id: "a1", name: "A1", description: "D", _score: 0.9 },
       ]);
       const results = await adapter.searchEntitiesByEmbedding([0.1], 5);
-      expect(results[0].metadata.score).toBe(0.9);
+      expect(results[0].metadata?.score).toBe(0.9);
     });
 
     it("should return empty on error", async () => {
@@ -390,7 +390,6 @@ describe("ConGraphStorageAdapter", () => {
         level: 0,
         title: "Community",
         summary: "Summary",
-        parentId: undefined,
         entityIds: ["e1", "e2"],
       });
       expect(mockGraph.addNode).toHaveBeenCalledWith(
