@@ -13,6 +13,7 @@ import type { GraphClient } from "../graph/client";
 import type { IVectorStore } from "../embeddings/vector-store-factory";
 import { config } from "../shared/config";
 import logger from "../shared/logger";
+import { activityLog } from "../shared/activity-log";
 import { consultationRoutes } from "./routes/consultation";
 import { articlesRoutes } from "./routes/articles";
 import { healthRoutes } from "./routes/health";
@@ -316,6 +317,19 @@ export async function createServer(options: ServerOptions) {
           event: "done",
           data: runResponse,
         };
+
+        activityLog.addEntry(
+          "query",
+          `Tham vấn pháp lý: "${input.query.length > 50 ? input.query.slice(0, 47) + "..." : input.query}"`,
+          {
+            session_id: input.sessionId,
+            query: input.query,
+            answer: res.response,
+            steps_count: steps.length,
+            duration_ms: Date.now() - t0,
+            citations,
+          },
+        );
       },
       setEndpoint(_url: string) {},
       async forgetSession(id: string) {

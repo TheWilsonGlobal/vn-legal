@@ -25,6 +25,7 @@ import type {
   Turn,
 } from "../../agent/contract";
 import { applyOwnerCookie } from "../plugins/owner";
+import { activityLog } from "../../shared/activity-log";
 
 // ----------------------------------------------------------------------------
 // Options and exported shapes
@@ -559,6 +560,11 @@ export async function agentRoutes(
   // --------------------------------------------------------------------------
   fastify.post("/agent/sessions", async (request, reply) => {
     const meta = await store.create(request.owner);
+    activityLog.addEntry(
+      "system",
+      `Tạo phiên làm việc mới: ${meta.session_id.slice(0, 8)}`,
+      { session_id: meta.session_id },
+    );
     return reply.code(201).send({
       session_id: meta.session_id,
       created_at: meta.created_at,
@@ -635,6 +641,9 @@ export async function agentRoutes(
       } finally {
         busy.delete(id);
       }
+      activityLog.addEntry("system", `Xóa phiên làm việc: ${id.slice(0, 8)}`, {
+        session_id: id,
+      });
       return reply.send({ session_id: id, deleted: true, mode: "soft" });
     },
   );
