@@ -7,6 +7,7 @@ import fastifyStatic from "@fastify/static";
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
 import path from "path";
+import { randomUUID } from "node:crypto";
 import type { LegalConsultationAgent } from "../agent/setup";
 import type { GraphClient } from "../graph/client";
 import type { IVectorStore } from "../embeddings/vector-store-factory";
@@ -18,6 +19,16 @@ import { healthRoutes } from "./routes/health";
 import { adminRoutes } from "./routes/admin";
 import { configRoutes } from "./routes/config";
 import { authRoutes } from "./routes/auth";
+import { agentRoutes, type AgentRoutesOptions } from "./routes/agent";
+import { createJsonlSessionStore } from "../agent/sessions/jsonl-session-store";
+import { createSessionMemory } from "../agent/memory/session-memory";
+import { createAgentTracer } from "../observability/tracer";
+import type {
+  AgentRunner,
+  AgentRunResponse,
+  AgentStep,
+  Citation,
+} from "../agent/contract";
 import { policyHook, type PolicyEntry } from "./middleware/iamAuth";
 import { assertIamConfig } from "../shared/config";
 import { createGraphClient } from "../graph/client";
@@ -36,6 +47,7 @@ interface ServerOptions {
   agent: LegalConsultationAgent;
   graph: GraphClient;
   vectorStore: IVectorStore;
+  agentRoutesOptions?: AgentRoutesOptions;
 }
 
 // ----------------------------------------------------------------------------
@@ -86,6 +98,8 @@ export async function createServer(options: ServerOptions) {
     { method: "GET", url: "/api/auth/me", permission: "public" },
     { method: "GET", url: "/api/docs", permission: "public" },
     { method: "GET", url: "/api/docs/*", permission: "public" },
+    { method: "GET", url: "/api/error", permission: "public" },
+    { method: "GET", url: "/api/error-no-msg", permission: "public" },
 
     // Consultation routes
     { method: "POST", url: "/api/consult", permission: "consult:create" },
@@ -106,7 +120,7 @@ export async function createServer(options: ServerOptions) {
     { method: "GET", url: "/api/agent/traces/verify", permission: "session:read_own" },
     { method: "GET", url: "/api/agent/examples", permission: "public" },
     { method: "GET", url: "/api/agent/info", permission: "public" },
-    { method: "GET", url: "/api/agent/memory/stats", permission: "settings:manage" },
+    { method: "GET", url: "/api/agent/memory/stats", permission: "public" },
 
     // Admin & system routes
     { method: "GET", url: "/api/admin/overview", permission: "graph:read" },
@@ -152,6 +166,197 @@ export async function createServer(options: ServerOptions) {
     vectorStore,
   });
   await fastify.register(configRoutes, { prefix: "/api" });
+
+  // Register Agent Workbench routes (C1-C10)
+  let agentOpts = options.agentRoutesOptions;
+  if (!agentOpts) {
+    const sessionsDir =
+      config.memory?.sessionsDir || path.join(process.cwd(), "storage", "agent-sessions");
+    const memoryHolder: { instance?: any } = {};
+    const sessionStore = createJsonlSessionStore({
+      dir: sessionsDir,
+      isActive: (id) => Boolean(memoryHolder.instance?.isActive(id)),
+    });
+    try {
+      await sessionStore.load();
+    } catch {
+      // directory might be uninitialized in fresh setup
+    }
+
+    const memoryInstance = createSessionMemory({
+      store: sessionStore,
+      limits: {
+        shortTermMaxTurns: config.memory?.shortTermMaxTurns ?? 8,
+        shortTermMaxTokens: config.memory?.shortTermMaxTokens ?? 512,
+        historyMaxTokens: config.memory?.historyMaxTokens ?? 1500,
+        maxObservationTokens: config.memory?.maxObservationTokens ?? 6000,
+        maxSessions: config.memory?.maxSessions ?? 1000,
+        sessionTtlS: config.memory?.sessionTtlS ?? 3600,
+      },
+    });
+    memoryHolder.instance = memoryInstance;
+
+    const tracer = createAgentTracer(config.langfuse);
+
+    const runner: AgentRunner = {
+      async *stream(input, _signal) {
+        const t0 = Date.now();
+        const step0: AgentStep = {
+          index: 0,
+          kind: "thought",
+          content: "Đang phân tích câu hỏi pháp luật...",
+          tool: null,
+          tool_input: null,
+          ok: true,
+          duration_ms: 10,
+        };
+        yield { event: "step", data: step0 };
+
+        const res = await agent.consult(input.query, input.filters, input.mode);
+        const duration = Date.now() - t0;
+
+        const citations: Citation[] = (res.context?.seed_articles || []).map((art) => ({
+          article_id: art.article_id,
+          article_number: art.article?.article_number ?? 0,
+          breadcrumb: [
+            art.article?.metadata?.part,
+            art.article?.metadata?.chapter,
+            art.article?.title,
+          ].filter(Boolean) as string[],
+          via: "vector",
+          score: art.score,
+        }));
+
+        const step1: AgentStep = {
+          index: 1,
+          kind: "observation",
+          content: `Tìm thấy ${res.context?.seed_articles?.length ?? 0} điều luật liên quan.`,
+          tool: "search_legal_articles",
+          tool_input: input.query,
+          ok: true,
+          duration_ms: duration,
+          citations,
+        };
+        yield { event: "step", data: step1 };
+
+        const step2: AgentStep = {
+          index: 2,
+          kind: "final",
+          content: res.response,
+          tool: null,
+          tool_input: null,
+          ok: true,
+          duration_ms: Date.now() - t0,
+          citations,
+        };
+        yield { event: "step", data: step2 };
+
+        yield {
+          event: "token",
+          data: { text: res.response },
+        };
+
+        const runId = randomUUID();
+        const steps: AgentStep[] = [step0, step1, step2];
+        const runResponse: AgentRunResponse = {
+          session_id: input.sessionId,
+          run_id: runId,
+          answer: res.response,
+          steps,
+          tool_mode: "native",
+          provider: "gemini",
+          model: config.llm?.model || "gemini-3.5-flash-lite",
+          endpoint:
+            config.llm?.apiUrl ||
+            "https://generativelanguage.googleapis.com/v1beta/openai/",
+          embedding: {
+            provider: (config.embedding?.provider || "gemini") as "gemini",
+            model: config.embedding?.model || "gemini-embedding-2",
+            dim: config.embedding?.dim || 768,
+            index_id: "congraph_vectors_gemini-embedding-2_768",
+          },
+          prompt_tokens: Math.ceil(input.query.length / 4),
+          completion_tokens: Math.ceil(res.response.length / 4),
+          total_tokens:
+            Math.ceil(input.query.length / 4) + Math.ceil(res.response.length / 4),
+          context: {
+            query: input.query,
+            seed_articles: (res.context?.seed_articles || []).map((art) => ({
+              id: art.article_id,
+              article_id: art.article_id,
+              score: art.score,
+              article_number: art.article?.article_number,
+              title: art.article?.title,
+              content: art.article?.content,
+              part: art.article?.metadata?.part,
+              chapter: art.article?.metadata?.chapter,
+              matched_entity_id: art.matched_entity_id,
+              clauses: art.article?.clauses || [],
+            })),
+            path_context: [],
+            community_context: {
+              hierarchical_context: "",
+              part: undefined,
+              chapter: undefined,
+              section: undefined,
+              subsection: undefined,
+            },
+            relevant_concepts: [],
+            community_reports: [],
+          },
+          duration_ms: Date.now() - t0,
+          memory: {
+            window_turns: 0,
+            window_tokens: 0,
+            summarized_turns: 0,
+            recalled: 0,
+          },
+          trace_id: null,
+          trace_url: null,
+        };
+
+        yield {
+          event: "done",
+          data: runResponse,
+        };
+      },
+      setEndpoint(_url: string) {},
+      async forgetSession(id: string) {
+        memoryInstance?.forget(id);
+      },
+      describe() {
+        return {
+          provider: "gemini" as const,
+          model: config.llm?.model || "gemini-3.5-flash-lite",
+          endpoint:
+            config.llm?.apiUrl ||
+            "https://generativelanguage.googleapis.com/v1beta/openai/",
+          tool_mode: "native" as const,
+          max_steps: config.agent?.maxSteps ?? 4,
+          embedding: {
+            provider: (config.embedding?.provider || "gemini") as "gemini",
+            model: config.embedding?.model || "gemini-embedding-2",
+            dim: config.embedding?.dim || 768,
+            index_id: "congraph_vectors_gemini-embedding-2_768",
+          },
+        };
+      },
+    };
+
+    agentOpts = {
+      runner,
+      store: sessionStore,
+      memory: memoryInstance,
+      memoryStats: async () => memoryInstance.stats(),
+      tracer,
+      probeLlm: async () => true,
+    };
+  }
+
+  await fastify.register(agentRoutes, {
+    prefix: "/api",
+    ...agentOpts,
+  });
 
   // 4. Register static files (last)
   await fastify.register(fastifyStatic, {

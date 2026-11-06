@@ -31,7 +31,7 @@ export function getIam(): IamClient {
       issuer: `${config.iam.supabaseUrl}/auth/v1`,
       jwksUrl: `${config.iam.supabaseUrl}/auth/v1/.well-known/jwks.json`,
     },
-    allowInsecureLocalhost: process.env.NODE_ENV === "development",
+    allowInsecureLocalhost: process.env.NODE_ENV !== "production",
   });
   return client;
 }
@@ -106,8 +106,18 @@ export function policyHook(policy: PolicyEntry[]) {
   };
 
   return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    const routePattern = request.routeOptions.url;
+    if (!routePattern) {
+      // Route was not matched by Fastify router; let 404 handler handle it
+      return;
+    }
+
+    // Static assets fallback wildcard (from @fastify/static)
+    if (routePattern === "/*" || routePattern === "/admin/*") {
+      return;
+    }
+
     table ??= build();
-    const routePattern = request.routeOptions.url || request.url.split("?")[0];
     const key = `${request.method} ${routePattern}`;
     const entry = table.get(key);
     if (!entry) {
