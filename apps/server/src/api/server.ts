@@ -237,25 +237,13 @@ export async function createServer(options: ServerOptions) {
         };
         yield { event: "step", data: step1 };
 
-        const step2: AgentStep = {
-          index: 2,
-          kind: "final",
-          content: res.response,
-          tool: null,
-          tool_input: null,
-          ok: true,
-          duration_ms: Date.now() - t0,
-          citations,
-        };
-        yield { event: "step", data: step2 };
-
         yield {
           event: "token",
           data: { text: res.response },
         };
 
         const runId = randomUUID();
-        const steps: AgentStep[] = [step0, step1, step2];
+        const steps: AgentStep[] = [step0, step1];
         const runResponse: AgentRunResponse = {
           session_id: input.sessionId,
           run_id: runId,

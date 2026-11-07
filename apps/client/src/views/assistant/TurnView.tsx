@@ -102,35 +102,40 @@ export default function TurnView({
         )}
       </div>
 
-      {/* 2. Các bước suy luận (Reasoning Steps) */}
-      {turn.steps.length > 0 && (
-        <div className="turn-section turn-steps-section">
-          <button
-            type="button"
-            className="trace-toggle section-toggle"
-            aria-expanded={stepsOpen}
-            aria-controls={stepsId}
-            onClick={handleToggleSteps}
-          >
-            <span className="toggle-chevron" aria-hidden="true">
-              {stepsOpen ? "▾" : "▸"}
-            </span>
-            <span>Các bước thực thi ({turn.steps.length})</span>
-            {streaming && <span className="muted"> · đang chạy…</span>}
-          </button>
-          {stepsOpen && (
-            <ol className="steps" id={stepsId} role="list">
-              {turn.steps.map((s) => (
-                <StepItem
-                  key={s.index}
-                  step={s}
-                  onOpenCitation={onOpenCitation}
-                />
-              ))}
-            </ol>
-          )}
-        </div>
-      )}
+      {/* 2. Các bước suy luận (Reasoning Steps - excludes final answer step) */}
+      {(() => {
+        const reasoningSteps = turn.steps.filter((s) => s.kind !== "final");
+        if (reasoningSteps.length === 0) return null;
+
+        return (
+          <div className="turn-section turn-steps-section">
+            <button
+              type="button"
+              className="trace-toggle section-toggle"
+              aria-expanded={stepsOpen}
+              aria-controls={stepsId}
+              onClick={handleToggleSteps}
+            >
+              <span className="toggle-chevron" aria-hidden="true">
+                {stepsOpen ? "▾" : "▸"}
+              </span>
+              <span>Các bước thực thi ({reasoningSteps.length})</span>
+              {streaming && <span className="muted"> · đang chạy…</span>}
+            </button>
+            {stepsOpen && (
+              <ol className="steps" id={stepsId} role="list">
+                {reasoningSteps.map((s, idx) => (
+                  <StepItem
+                    key={s.index ?? idx}
+                    step={s}
+                    onOpenCitation={onOpenCitation}
+                  />
+                ))}
+              </ol>
+            )}
+          </div>
+        );
+      })()}
 
       {turn.status === "error" && turn.error && (
         <div className="turn-error" role="alert">
