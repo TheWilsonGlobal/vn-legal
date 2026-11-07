@@ -102,14 +102,16 @@ export function Topbar({
             <span aria-hidden="true">+ </span>New
           </button>
 
-          {sessionId && (
-            <span
-              className="topbar-session-chip mono"
-              title={`Mã phiên đầy đủ: ${sessionId}`}
-            >
-              Phiên ID: {sessionId.slice(0, 8)}
-            </span>
-          )}
+          <span
+            className={`topbar-session-chip mono${sessionId ? " is-active" : " is-empty"}`}
+            title={
+              sessionId
+                ? `Mã phiên đầy đủ: ${sessionId}`
+                : "Chưa chọn phiên (hệ thống sẽ tự động gán khi đặt câu hỏi)"
+            }
+          >
+            Phiên ID: {sessionId ? sessionId.slice(0, 8) : "—"}
+          </span>
         </div>
 
         {/* Mở rộng / Thu gọn tất cả in header when in assistant or settings view */}

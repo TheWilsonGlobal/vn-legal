@@ -450,6 +450,11 @@ export async function agentRoutes(
         "X-Accel-Buffering": "no",
       });
 
+      await writeEvent(raw, {
+        event: "session",
+        data: { session_id: sessionId, created: session.created },
+      });
+
       let terminal = false;
       for await (const ev of runner.stream(
         toInput(parsed.data, session, request.owner),

@@ -79,6 +79,12 @@ function App() {
     try {
       const res = await listSessions();
       setSessions(res.sessions);
+      setSessionId((curr) => {
+        if (curr === null && res.sessions.length > 0) {
+          return res.sessions[0].session_id;
+        }
+        return curr;
+      });
     } catch (err) {
       console.error("Failed to load sessions in App", err);
     }

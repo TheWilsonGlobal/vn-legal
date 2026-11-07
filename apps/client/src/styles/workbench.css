@@ -258,14 +258,31 @@ body {
 }
 
 .topbar-session-chip {
-  background: rgba(30, 58, 138, 0.35);
+  background: rgba(30, 58, 138, 0.4);
   color: #93c5fd;
-  border: 1px solid rgba(147, 197, 253, 0.3);
+  border: 1px solid rgba(147, 197, 253, 0.35);
   border-radius: 6px;
-  padding: 3px 8px;
-  font-size: 11px;
-  letter-spacing: 0.03em;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+}
+
+.topbar-session-chip.is-active {
+  background: rgba(30, 64, 175, 0.5);
+  color: #60a5fa;
+  border-color: #3b82f6;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.25);
+}
+
+.topbar-session-chip.is-empty {
+  background: rgba(71, 85, 105, 0.25);
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.3);
+  font-weight: 400;
 }
 
 /* Topbar hierarchy expand / collapse */
