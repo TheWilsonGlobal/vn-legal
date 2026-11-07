@@ -46,4 +46,12 @@ export interface ViewProps {
   navigate: (view: ViewId) => void;
   info: InfoState;
   refreshInfo: () => void;
+  setHierarchyControls?: (
+    controls: {
+      expandAll: () => void;
+      collapseAll: () => void;
+      turnCount: number;
+    } | null,
+  ) => void;
+  refreshSessions?: () => void;
 }

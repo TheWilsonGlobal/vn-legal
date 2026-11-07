@@ -1,7 +1,7 @@
 import type React from "react";
 import { SigmaGraphVisualization } from "../../SigmaGraphVisualization";
 import type { ConsultContext } from "../../types/agent";
-import type { ApiResourceState } from "../sessions/useApiResource";
+import type { Resource } from "../sessions/useApiResource";
 import { type GraphBuild, onActivate } from "./graph-builder";
 import {
   EXPLORER_EDGE_TYPES,
@@ -12,7 +12,7 @@ import {
 
 interface GraphCanvasProps {
   config: {
-    resource: ApiResourceState<ExplorerConfig>;
+    resource: Resource<ExplorerConfig>;
     reload: () => void;
   };
   cytoscapeMissing: boolean;

@@ -107,6 +107,55 @@ export function Sidebar({
           })}
         </ul>
       </nav>
+
+      <div className="sidebar-footer">
+        {!collapsed ? (
+          <div className="sidebar-llm-card">
+            <div className="sidebar-llm-status">
+              <span className={`dot ${dot.cls}`} aria-hidden="true" />
+              <span className="sidebar-llm-status-text">
+                {info.status === "ready"
+                  ? info.info.llm_status === "connected"
+                    ? "LLM đã kết nối"
+                    : "LLM mất kết nối"
+                  : info.status === "loading"
+                    ? "Đang kết nối LLM..."
+                    : "Lỗi kết nối LLM"}
+              </span>
+            </div>
+            {info.status === "ready" && (
+              <div className="sidebar-llm-details">
+                <div className="sidebar-llm-row">
+                  <span className="sidebar-llm-label">Chat:</span>
+                  <span className="sidebar-llm-val mono" title={info.info.model}>
+                    {info.info.model}
+                  </span>
+                </div>
+                <div className="sidebar-llm-row">
+                  <span className="sidebar-llm-label">Embedding:</span>
+                  <span
+                    className="sidebar-llm-val mono"
+                    title={`${info.info.embedding.model} (${info.info.embedding.dim})`}
+                  >
+                    {info.info.embedding.model} · {info.info.embedding.dim}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div
+            className="sidebar-llm-collapsed"
+            title={
+              info.status === "ready"
+                ? `Chat: ${info.info.model}\nEmbedding: ${info.info.embedding.model} · ${info.info.embedding.dim}\nTrạng thái: ${info.info.llm_status}`
+                : dot.title
+            }
+          >
+            <span className={`dot ${dot.cls}`} aria-hidden="true" />
+          </div>
+        )}
+      </div>
     </aside>
   );
 }

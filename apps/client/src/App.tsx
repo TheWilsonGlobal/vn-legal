@@ -7,12 +7,12 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from "react";
-import { getInfo, isAbortError } from "./api/agent";
+import { createSession, getInfo, isAbortError, listSessions } from "./api/agent";
 import { initAuth, onAuthChange, signInWithGoogle } from "./api/auth";
 import { Sidebar } from "./layout/Sidebar";
 import { Topbar, type UserProfile } from "./layout/Topbar";
 import { VIEWS, resolveView } from "./layout/viewRegistry";
-import type { ConsultContext } from "./types/agent";
+import type { ConsultContext, SessionListItem } from "./types/agent";
 import type { InfoState, ViewId, ViewProps } from "./types/views";
 import "./styles/workbench.css";
 
@@ -63,11 +63,41 @@ function App() {
   const [traceSessionFilter, setTraceSessionFilter] = useState<string | null>(
     null,
   );
+  const [sessions, setSessions] = useState<SessionListItem[]>([]);
+  const [hierarchyControls, setHierarchyControls] = useState<{
+    expandAll: () => void;
+    collapseAll: () => void;
+    turnCount: number;
+  } | null>(null);
   const [info, setInfo] = useState<InfoState>({ status: "loading" });
   const [user, setUser] = useState<UserProfile | null>(null);
   const [requireLogin, setRequireLogin] = useState<boolean>(true);
   const [authChecking, setAuthChecking] = useState<boolean>(true);
   const infoAbort = useRef<AbortController | null>(null);
+
+  const refreshSessions = useCallback(async () => {
+    try {
+      const res = await listSessions();
+      setSessions(res.sessions);
+    } catch (err) {
+      console.error("Failed to load sessions in App", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshSessions();
+  }, [refreshSessions]);
+
+  const handleNewSession = useCallback(async () => {
+    try {
+      const res = await createSession();
+      setSessionId(res.session_id);
+      setActiveView("assistant");
+      await refreshSessions();
+    } catch (err) {
+      console.error("Failed to create session", err);
+    }
+  }, [refreshSessions]);
 
   const fetchCurrentUser = useCallback(async () => {
     try {
@@ -147,6 +177,8 @@ function App() {
     navigate: setActiveView,
     info,
     refreshInfo,
+    setHierarchyControls,
+    refreshSessions,
   });
 
   return (
@@ -167,6 +199,14 @@ function App() {
           user={user}
           requireLogin={requireLogin}
           onAuthRefresh={fetchCurrentUser}
+          sessionId={sessionId}
+          sessions={sessions}
+          onSelectSession={(id) => {
+            setSessionId(id);
+            if (id) setActiveView("assistant");
+          }}
+          onNewSession={handleNewSession}
+          hierarchyControls={hierarchyControls}
         />
         <main className="workbench">
           {requireLogin && !user && !authChecking ? (

@@ -1,6 +1,7 @@
 import type { InfoState, ViewId } from "../types/views";
 import { VIEWS } from "./viewRegistry";
 import { signInWithGoogle, signOut } from "../api/auth";
+import type { SessionListItem } from "../types/agent";
 
 export interface UserProfile {
   id: string;
@@ -17,16 +18,34 @@ interface TopbarProps {
   user: UserProfile | null;
   requireLogin?: boolean;
   onAuthRefresh?: () => void;
+  // Session controls
+  sessionId: string | null;
+  sessions: SessionListItem[];
+  onSelectSession: (id: string | null) => void;
+  onNewSession: () => void;
+  // Global hierarchy controls
+  hierarchyControls?: {
+    expandAll: () => void;
+    collapseAll: () => void;
+    turnCount: number;
+  } | null;
 }
 
 export function Topbar({
   activeView,
-  info,
-  onRetryInfo,
+  info: _info,
+  onRetryInfo: _onRetryInfo,
   user,
   onAuthRefresh,
+  sessionId,
+  sessions,
+  onSelectSession,
+  onNewSession,
+  hierarchyControls,
 }: TopbarProps) {
   const title = VIEWS.find((v) => v.id === activeView)?.label ?? activeView;
+  const known =
+    sessionId !== null && sessions.some((s) => s.session_id === sessionId);
 
   const handleLogin = async () => {
     try {
@@ -48,10 +67,87 @@ export function Topbar({
 
   return (
     <header className="workbench-topbar">
-      <h2 className="workbench-topbar-title">{title}</h2>
+      <div className="workbench-topbar-left">
+        <h2 className="workbench-topbar-title">{title}</h2>
+
+        {/* Session selector + New button + Session ID display in header */}
+        <div className="topbar-session-bar" role="toolbar" aria-label="Quản lý phiên">
+          <label htmlFor="topbar-session-select" className="topbar-session-label">
+            Phiên
+          </label>
+          <select
+            id="topbar-session-select"
+            className="topbar-session-select"
+            value={sessionId ?? ""}
+            onChange={(e) => onSelectSession(e.target.value || null)}
+            aria-label="Chọn phiên"
+          >
+            <option value="">— Chưa chọn phiên —</option>
+            {sessionId !== null && !known && (
+              <option value={sessionId}>{sessionId.slice(0, 8)}</option>
+            )}
+            {sessions.map((s) => (
+              <option key={s.session_id} value={s.session_id}>
+                {s.session_id.slice(0, 8)} ({s.message_count} tin nhắn,{" "}
+                {s.active ? "đang hoạt động" : "đã lưu"})
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="topbar-btn-new"
+            aria-label="Tạo phiên mới"
+            onClick={onNewSession}
+          >
+            <span aria-hidden="true">+ </span>New
+          </button>
+
+          {sessionId && (
+            <span
+              className="topbar-session-chip mono"
+              title={`Mã phiên đầy đủ: ${sessionId}`}
+            >
+              Phiên ID: {sessionId.slice(0, 8)}
+            </span>
+          )}
+        </div>
+
+        {/* Mở rộng / Thu gọn tất cả in header when in assistant view */}
+        {activeView === "assistant" &&
+          hierarchyControls &&
+          hierarchyControls.turnCount > 0 && (
+            <div className="topbar-hierarchy-controls">
+              <button
+                type="button"
+                className="topbar-hierarchy-btn"
+                onClick={hierarchyControls.expandAll}
+                title="Mở rộng tất cả các lượt"
+              >
+                <span aria-hidden="true">▾▾ </span>Mở rộng tất cả
+              </button>
+              <button
+                type="button"
+                className="topbar-hierarchy-btn"
+                onClick={hierarchyControls.collapseAll}
+                title="Thu gọn tất cả các lượt"
+              >
+                <span aria-hidden="true">▸▸ </span>Thu gọn tất cả
+              </button>
+            </div>
+          )}
+      </div>
+
       <div className="workbench-topbar-right">
         {user ? (
-          <div className="topbar-user" style={{ display: "flex", alignItems: "center", gap: "8px", marginRight: "12px" }}>
+          <div
+            className="topbar-user"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              marginRight: "4px",
+            }}
+          >
             {user.picture ? (
               <img
                 src={user.picture}
@@ -61,7 +157,9 @@ export function Topbar({
             ) : (
               <span className="dot dot-online" aria-hidden="true" />
             )}
-            <span style={{ fontSize: "13px", fontWeight: 500 }}>{user.name}</span>
+            <span style={{ fontSize: "13px", fontWeight: 500 }}>
+              {user.name}
+            </span>
             <button
               type="button"
               className="link-btn"
@@ -76,57 +174,16 @@ export function Topbar({
             type="button"
             className="topbar-pill"
             onClick={handleLogin}
-            style={{ cursor: "pointer", background: "#2563eb", color: "#fff", fontWeight: 600, border: "none" }}
+            style={{
+              cursor: "pointer",
+              background: "#2563eb",
+              color: "#fff",
+              fontWeight: 600,
+              border: "none",
+            }}
           >
             Đăng nhập Google
           </button>
-        )}
-
-        {info.status === "loading" && (
-          <span className="topbar-pill muted">
-            <span className="dot dot-connecting" aria-hidden="true" />
-            Đang tải thông tin mô hình…
-          </span>
-        )}
-        {info.status === "error" && (
-          <span className="topbar-pill topbar-error" role="alert">
-            <span className="dot dot-error" aria-hidden="true" />
-            Không tải được thông tin mô hình ({info.message})
-            <button type="button" className="link-btn" onClick={onRetryInfo}>
-              Thử lại
-            </button>
-          </span>
-        )}
-        {info.status === "ready" && (
-          <>
-            <span className="topbar-pill" title="Mô hình chat">
-              <span className="muted">Chat</span>
-              <span className="mono">{info.info.model}</span>
-            </span>
-            <span className="topbar-pill" title="Mô hình embedding · số chiều">
-              <span className="muted">Embedding</span>
-              <span className="mono">
-                {info.info.embedding.model} · {info.info.embedding.dim}
-              </span>
-            </span>
-            <span
-              className="topbar-pill"
-              title={`LLM: ${info.info.llm_status}`}
-              role="status"
-            >
-              <span
-                className={`dot ${
-                  info.info.llm_status === "connected"
-                    ? "dot-online"
-                    : "dot-offline"
-                }`}
-                aria-hidden="true"
-              />
-              {info.info.llm_status === "connected"
-                ? "LLM đã kết nối"
-                : "LLM mất kết nối"}
-            </span>
-          </>
         )}
       </div>
     </header>

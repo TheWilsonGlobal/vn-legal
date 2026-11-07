@@ -54,8 +54,15 @@ type SessionsState =
   | { status: "error"; message: string };
 
 export default function AssistantView(props: ViewProps) {
-  const { active, sessionId, setSessionId, setLastContext, refreshInfo } =
-    props;
+  const {
+    active,
+    sessionId,
+    setSessionId,
+    setLastContext,
+    refreshInfo,
+    setHierarchyControls,
+    refreshSessions,
+  } = props;
 
   const [turns, setTurns] = useState<TurnState[]>([]);
   const [text, setText] = useState("");
@@ -183,6 +190,7 @@ export default function AssistantView(props: ViewProps) {
           break;
         case "done":
           cb.current.setLastContext(ev.data.context);
+          refreshSessions?.();
           patchTurn(key, (t) => ({
             ...t,
             answer: ev.data.answer,
@@ -324,117 +332,32 @@ export default function AssistantView(props: ViewProps) {
       const created = await createSession();
       setSessionId(created.session_id);
       void loadSessions();
+      refreshSessions?.();
     } catch (err) {
       setPageError(`Không tạo được phiên mới: ${errMessage(err)}`);
     }
   };
 
-  const items = sessions.status === "ready" ? sessions.items : [];
-  const known =
-    sessionId !== null && items.some((s) => s.session_id === sessionId);
+  useEffect(() => {
+    if (!active) {
+      setHierarchyControls?.(null);
+      return;
+    }
+    setHierarchyControls?.({
+      expandAll,
+      collapseAll,
+      turnCount: turns.length,
+    });
+    return () => {
+      setHierarchyControls?.(null);
+    };
+  }, [active, turns.length, setHierarchyControls]);
 
   return (
     <div className="assistant-view">
-      <div className="assistant-toolbar">
-        <label htmlFor="session-picker">Phiên</label>
-        <select
-          id="session-picker"
-          value={sessionId ?? ""}
-          disabled={streaming}
-          onChange={(e) => {
-            setPageError(null);
-            setSessionId(e.target.value === "" ? null : e.target.value);
-          }}
-        >
-          <option value="">— Chưa chọn phiên —</option>
-          {sessionId !== null && !known && (
-            <option value={sessionId}>{shortId(sessionId)}</option>
-          )}
-          {items.map((s) => (
-            <option key={s.session_id} value={s.session_id}>
-              {sessionLabel(s)}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          className="btn-small"
-          disabled={streaming}
-          aria-label="Tạo phiên mới (New)"
-          onClick={() => void newSession()}
-        >
-          <span aria-hidden="true">+ </span>New
-        </button>
-        {sessions.status === "error" && (
-          <span className="toolbar-error" role="alert">
-            Không tải được danh sách phiên: {sessions.message}{" "}
-            <button
-              type="button"
-              className="btn-small"
-              onClick={() => void loadSessions()}
-            >
-              Thử lại
-            </button>
-          </span>
-        )}
-      </div>
-
       {pageError && (
         <div className="turn-error" role="alert">
           {pageError}
-        </div>
-      )}
-
-      {turns.length > 0 && (
-        <div className="hierarchy-toolbar glass-card">
-          <span className="hierarchy-title">
-            <span aria-hidden="true">📑 </span>Cấu trúc ({turns.length} lượt):
-          </span>
-          <div className="hierarchy-actions">
-            <button
-              type="button"
-              className="btn-hierarchy"
-              onClick={expandAll}
-              title="Mở rộng tất cả câu hỏi, bước suy luận và câu trả lời"
-            >
-              <span aria-hidden="true">▾▾ </span>Mở rộng tất cả
-            </button>
-            <button
-              type="button"
-              className="btn-hierarchy"
-              onClick={collapseAll}
-              title="Thu gọn tất cả"
-            >
-              <span aria-hidden="true">▸▸ </span>Thu gọn tất cả
-            </button>
-            <button
-              type="button"
-              className={`btn-hierarchy${allQueriesOpen ? " active" : ""}`}
-              onClick={toggleAllQueries}
-              title="Bật/tắt hiển thị câu hỏi"
-            >
-              <span aria-hidden="true">{allQueriesOpen ? "▾ " : "▸ "}</span>
-              Câu hỏi
-            </button>
-            <button
-              type="button"
-              className={`btn-hierarchy${allStepsOpen ? " active" : ""}`}
-              onClick={toggleAllSteps}
-              title="Bật/tắt hiển thị các bước suy luận"
-            >
-              <span aria-hidden="true">{allStepsOpen ? "▾ " : "▸ "}</span>
-              Bước suy luận
-            </button>
-            <button
-              type="button"
-              className={`btn-hierarchy${allAnswersOpen ? " active" : ""}`}
-              onClick={toggleAllAnswers}
-              title="Bật/tắt hiển thị câu trả lời"
-            >
-              <span aria-hidden="true">{allAnswersOpen ? "▾ " : "▸ "}</span>
-              Câu trả lời
-            </button>
-          </div>
         </div>
       )}
 
