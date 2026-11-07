@@ -308,11 +308,6 @@ export async function createServer(options: ServerOptions) {
           trace_url: null,
         };
 
-        yield {
-          event: "done",
-          data: runResponse,
-        };
-
         try {
           const meta = await sessionStore.get(input.owner, input.sessionId);
           let seq = (meta?.record_count ?? 1) + 1;
@@ -391,6 +386,11 @@ export async function createServer(options: ServerOptions) {
             citations,
           },
         );
+
+        yield {
+          event: "done",
+          data: runResponse,
+        };
       },
       setEndpoint(_url: string) {},
       async forgetSession(id: string) {
