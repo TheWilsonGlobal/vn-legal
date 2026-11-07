@@ -32,6 +32,7 @@ import {
   newSessionState,
   type SessionState,
 } from "./session-state";
+import { config } from "../../shared/config";
 
 export interface SessionStoreOptions {
   /** Directory holding index.json and one <session_id>.jsonl per session. Created if missing. */
@@ -247,8 +248,12 @@ export function createJsonlSessionStore(
       assertOwner(owner);
       return serial(async () => {
         usable();
-        return [...sessions.values()]
-          .filter((s) => s.entry.owner === owner && !s.entry.hidden)
+        let matches = [...sessions.values()]
+          .filter((s) => s.entry.owner === owner && !s.entry.hidden);
+        if (matches.length === 0 && !config.iam.requireLogin) {
+          matches = [...sessions.values()].filter((s) => !s.entry.hidden);
+        }
+        return matches
           .map(metaOf)
           .sort((a, b) =>
             a.created_at < b.created_at
@@ -264,7 +269,13 @@ export function createJsonlSessionStore(
       assertOwner(owner);
       return serial(async () => {
         usable();
-        const state = ownedLive(owner, id);
+        let state = ownedLive(owner, id);
+        if (!state && !config.iam.requireLogin) {
+          const anyState = sessions.get(id);
+          if (anyState && !anyState.entry.hidden) {
+            state = anyState;
+          }
+        }
         return state ? metaOf(state) : null;
       });
     },
@@ -306,7 +317,13 @@ export function createJsonlSessionStore(
       usable();
       return serial(async () => {
         usable();
-        const state = ownedLive(owner, id);
+        let state = ownedLive(owner, id);
+        if (!state && !config.iam.requireLogin) {
+          const anyState = sessions.get(id);
+          if (anyState && !anyState.entry.hidden) {
+            state = anyState;
+          }
+        }
         if (!state) return [];
         const path = sessionLogPath(dir, id);
         const records = parseLogStrict(path, await readLogText(path), id);
@@ -331,6 +348,9 @@ export function createJsonlSessionStore(
         let scope = [...sessions.values()].filter(
           (s) => s.entry.owner === owner && !s.entry.hidden,
         );
+        if (scope.length === 0 && !config.iam.requireLogin) {
+          scope = [...sessions.values()].filter((s) => !s.entry.hidden);
+        }
         if (q.session_id !== undefined) {
           const wanted = q.session_id;
           scope = scope.filter((s) => s.entry.session_id === wanted);
@@ -387,9 +407,12 @@ export function createJsonlSessionStore(
       return serial(async () => {
         usable();
         // Hidden sessions stay in the chain check: their logs are kept on disk.
-        const owned = [...sessions.values()]
-          .filter((s) => s.entry.owner === owner)
-          .sort((a, b) => {
+        let owned = [...sessions.values()]
+          .filter((s) => s.entry.owner === owner);
+        if (owned.length === 0 && !config.iam.requireLogin) {
+          owned = [...sessions.values()];
+        }
+        owned.sort((a, b) => {
             const ca = a.entry.created_at;
             const cb = b.entry.created_at;
             if (ca !== cb) return ca < cb ? -1 : 1;

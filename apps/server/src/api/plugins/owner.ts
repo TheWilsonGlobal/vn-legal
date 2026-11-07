@@ -64,7 +64,7 @@ function ownerSetCookie(value: string, secure: boolean): string {
     "Path=/",
     `Max-Age=${OWNER_MAX_AGE_S}`,
     "HttpOnly",
-    "SameSite=Strict",
+    "SameSite=Lax",
   ];
   if (secure) parts.push("Secure");
   return parts.join("; ");

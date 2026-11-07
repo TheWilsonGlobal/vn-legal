@@ -115,6 +115,20 @@ function renderBlockLines(lines: string[]): ReactNode[] {
   return elements;
 }
 
+/** Strips dividers and trims empty lines from start and end. */
+function cleanLines(lines: string[]): string[] {
+  const filtered = lines.filter((l) => !l.trim().match(/^[-*_]{3,}$/));
+  let start = 0;
+  while (start < filtered.length && filtered[start].trim() === "") {
+    start++;
+  }
+  let end = filtered.length;
+  while (end > start && filtered[end - 1].trim() === "") {
+    end--;
+  }
+  return filtered.slice(start, end);
+}
+
 interface SectionItem {
   id: string;
   title: string;
@@ -170,16 +184,23 @@ export default function MarkdownView({ text }: { text: string }) {
 
   // If no sections were identified, render flat space-optimized lines
   if (!hasSections) {
-    return <div className="markdown-container">{renderBlockLines(lines)}</div>;
+    return (
+      <div className="markdown-container">
+        {renderBlockLines(cleanLines(lines))}
+      </div>
+    );
   }
 
   const allSectionsOpen = sections.every((s) => isSectionOpen(s.id));
+  const cleanedPreamble = cleanLines(preamble);
 
   return (
     <div className="markdown-container markdown-hierarchical">
       {/* Introduction paragraph before first section */}
-      {preamble.length > 0 && (
-        <div className="markdown-preamble">{renderBlockLines(preamble)}</div>
+      {cleanedPreamble.length > 0 && (
+        <div className="markdown-preamble">
+          {renderBlockLines(cleanedPreamble)}
+        </div>
       )}
 
       {/* Mini section-hierarchy controller if multiple sections exist */}
@@ -240,7 +261,7 @@ export default function MarkdownView({ text }: { text: string }) {
 
               {open && (
                 <div className="response-section-body">
-                  {renderBlockLines(sec.lines)}
+                  {renderBlockLines(cleanLines(sec.lines))}
                 </div>
               )}
             </div>

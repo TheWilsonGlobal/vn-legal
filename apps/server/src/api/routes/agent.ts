@@ -330,7 +330,7 @@ export async function agentRoutes(
   // context, so the legacy routes never see them.
   await fastify.register(fastifyCookie);
   applyOwnerCookie(fastify, {
-    secure: process.env.NODE_ENV !== "development",
+    secure: process.env.NODE_ENV === "production",
   });
 
   // K10: one active run per session. Held from before the stream starts until

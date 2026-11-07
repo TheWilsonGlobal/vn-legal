@@ -41,7 +41,11 @@ export function installAuthFetch(getApiUrl: (path: string) => string = (p) => p)
     if (accessToken && !headers.has("authorization")) {
       headers.set("authorization", `Bearer ${accessToken}`);
     }
-    return original(input, { ...init, headers, credentials: "omit" });
+    return original(input, {
+      ...init,
+      headers,
+      credentials: init?.credentials ?? "same-origin",
+    });
   };
 }
 

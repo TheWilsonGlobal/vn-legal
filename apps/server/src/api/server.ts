@@ -95,20 +95,26 @@ export async function createServer(options: ServerOptions) {
   const policy: PolicyEntry[] = [
     // Public routes
     { method: "GET", url: "/api/health", permission: "public" },
+    { method: "GET", url: "/api/health/liveness", permission: "public" },
+    { method: "GET", url: "/api/health/readiness", permission: "public" },
     { method: "GET", url: "/api/config", permission: "public" },
     { method: "GET", url: "/api/auth/me", permission: "public" },
     { method: "GET", url: "/api/docs", permission: "public" },
     { method: "GET", url: "/api/docs/*", permission: "public" },
     { method: "GET", url: "/api/error", permission: "public" },
     { method: "GET", url: "/api/error-no-msg", permission: "public" },
+    { method: "GET", url: "/api/consult/suggestions", permission: "public" },
 
     // Consultation routes
     { method: "POST", url: "/api/consult", permission: "consult:create" },
 
     // Article query routes
     { method: "GET", url: "/api/article/:id", permission: "articles:read" },
+    { method: "GET", url: "/api/article/:id/clauses", permission: "articles:read" },
     { method: "GET", url: "/api/articles", permission: "articles:read" },
+    { method: "GET", url: "/api/articles/random", permission: "articles:read" },
     { method: "GET", url: "/api/articles/search", permission: "articles:read" },
+    { method: "GET", url: "/api/search", permission: "articles:read" },
 
     // Agent workbench routes (C1-C10)
     { method: "POST", url: "/api/agent/stream", permission: "consult:create" },
@@ -139,6 +145,7 @@ export async function createServer(options: ServerOptions) {
     { method: "POST", url: "/api/admin/knowledge/upload", permission: "graph:manage" },
     { method: "POST", url: "/api/admin/knowledge/clean", permission: "graph:manage" },
     { method: "GET", url: "/api/admin/config", permission: "settings:manage" },
+    { method: "GET", url: "/api/admin/config/export", permission: "settings:manage" },
     { method: "POST", url: "/api/admin/config", permission: "settings:manage" },
     { method: "GET", url: "/api/admin/llm/status", permission: "settings:manage" },
     { method: "GET", url: "/api/admin/llm/last-prompt", permission: "settings:manage" },
@@ -305,6 +312,72 @@ export async function createServer(options: ServerOptions) {
           event: "done",
           data: runResponse,
         };
+
+        try {
+          const meta = await sessionStore.get(input.owner, input.sessionId);
+          let seq = (meta?.record_count ?? 1) + 1;
+
+          await sessionStore.append(input.sessionId, {
+            session_id: input.sessionId,
+            run_id: runId,
+            seq: seq++,
+            created_at: new Date(t0).toISOString(),
+            kind: "query",
+            content: input.query,
+          });
+
+          await sessionStore.append(input.sessionId, {
+            session_id: input.sessionId,
+            run_id: runId,
+            seq: seq++,
+            created_at: new Date(t0 + 10).toISOString(),
+            kind: "step",
+            step_kind: "thought",
+            index: step0.index,
+            tool: step0.tool,
+            tool_input: step0.tool_input,
+            ok: step0.ok,
+            duration_ms: step0.duration_ms,
+            citations: [],
+            content: step0.content,
+          });
+
+          await sessionStore.append(input.sessionId, {
+            session_id: input.sessionId,
+            run_id: runId,
+            seq: seq++,
+            created_at: new Date(t0 + duration).toISOString(),
+            kind: "step",
+            step_kind: "observation",
+            index: step1.index,
+            tool: step1.tool,
+            tool_input: step1.tool_input,
+            ok: step1.ok,
+            duration_ms: step1.duration_ms,
+            citations: step1.citations,
+            content: step1.content,
+          });
+
+          await sessionStore.append(input.sessionId, {
+            session_id: input.sessionId,
+            run_id: runId,
+            seq: seq++,
+            created_at: new Date().toISOString(),
+            kind: "answer",
+            content: res.response,
+            ok: true,
+            trace_id: null,
+            trace_url: null,
+          });
+
+          memoryInstance?.recordTurn(input.sessionId, {
+            run_id: runId,
+            query: input.query,
+            answer: res.response,
+          });
+        } catch (err) {
+          logger.warn(`Failed to persist session records: ${err}`);
+        }
 
         activityLog.addEntry(
           "query",
