@@ -112,8 +112,8 @@ export function Topbar({
           )}
         </div>
 
-        {/* Mở rộng / Thu gọn tất cả in header when in assistant view */}
-        {activeView === "assistant" &&
+        {/* Mở rộng / Thu gọn tất cả in header when in assistant or settings view */}
+        {(activeView === "assistant" || activeView === "settings") &&
           hierarchyControls &&
           hierarchyControls.turnCount > 0 && (
             <div className="topbar-hierarchy-controls">
@@ -121,7 +121,7 @@ export function Topbar({
                 type="button"
                 className="topbar-hierarchy-btn"
                 onClick={hierarchyControls.expandAll}
-                title="Mở rộng tất cả các lượt"
+                title="Mở rộng tất cả các phần"
               >
                 <span aria-hidden="true">▾▾ </span>Mở rộng tất cả
               </button>
@@ -129,7 +129,7 @@ export function Topbar({
                 type="button"
                 className="topbar-hierarchy-btn"
                 onClick={hierarchyControls.collapseAll}
-                title="Thu gọn tất cả các lượt"
+                title="Thu gọn tất cả các phần"
               >
                 <span aria-hidden="true">▸▸ </span>Thu gọn tất cả
               </button>
