@@ -6,7 +6,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { GraphClient } from "../../graph/client";
 import type { IVectorStore } from "../../embeddings/vector-store-factory";
 import { z } from "zod";
-import { getEmbedder } from "../../embeddings/embedder";
+import { getEmbedder } from "../../embeddings/embedder-factory";
 
 // ----------------------------------------------------------------------------
 // Request Schemas

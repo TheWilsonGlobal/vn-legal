@@ -3,6 +3,11 @@ import logger from "../../../shared/logger";
 import { buildGraph } from "../../../scripts/build-graph";
 import { buildVectorIndex } from "../../../scripts/build-index";
 import { activityLog } from "../../../shared/activity-log";
+import { config } from "../../../shared/config";
+import {
+  assertNoManifestLock,
+  IndexManifestLockedError,
+} from "../../../embeddings/index-manifest";
 import type { AdminRoutesOptions } from "./types";
 
 export function registerSystemRoutes(
@@ -78,6 +83,18 @@ export function registerSystemRoutes(
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       logger.info("Admin: Vector re-indexing triggered via API");
+
+      // A store with a manifest is written only by the Gemini rebuild script (AC 41).
+      try {
+        assertNoManifestLock(config.conGraphVectorDbPath);
+      } catch (err) {
+        if (err instanceof IndexManifestLockedError) {
+          return reply
+            .status(409)
+            .send({ error: err.code, path: err.path, message: err.message });
+        }
+        throw err;
+      }
 
       setImmediate(async () => {
         try {

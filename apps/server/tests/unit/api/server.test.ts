@@ -1,4 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  beforeAll,
+  afterAll,
+} from "vitest";
 import {
   createServer,
   startServer,
@@ -7,6 +15,20 @@ import {
 import { config } from "../../../src/shared/config";
 
 // Mock plugins were removed as they might cause hangs in Fastify 5
+
+// createServer builds the agent runner, which refuses a non-Gemini config (plan r5 §5.3).
+// Give this suite a valid Gemini config for its duration. No network call is made.
+const savedLlm = { provider: config.llm.provider };
+const savedGemini = { ...config.gemini };
+beforeAll(() => {
+  config.llm.provider = "gemini";
+  (config.gemini as any).apiKey = "test-gemini-key";
+  (config.gemini as any).model = "gemini-3.5-flash-lite";
+});
+afterAll(() => {
+  config.llm.provider = savedLlm.provider;
+  Object.assign(config.gemini as any, savedGemini);
+});
 
 describe("API Server", () => {
   let mockAgent: any;

@@ -2,7 +2,7 @@ import {
   createVectorStore,
   createIndexingPipeline,
 } from "../embeddings/lancedb";
-import { getEmbedder } from "../embeddings/embedder";
+import { getEmbedder } from "../embeddings/embedder-factory";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import logger from "../shared/logger";

@@ -35,10 +35,12 @@ vi.mock("../../../../src/shared/config", () => ({
   },
 }));
 
-vi.mock("../../../../src/embeddings/embedder", () => ({
+vi.mock("../../../../src/embeddings/embedder-factory", () => ({
   getEmbedder: vi.fn().mockResolvedValue({
     embed: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
   }),
+  // Legacy embedder: no document path, so the route keeps embed().
+  documentEmbedderOf: () => null,
 }));
 
 vi.mock("../../../../src/scripts/build-graph", () => ({
@@ -507,7 +509,7 @@ describe("Admin Routes", () => {
 
     it("should handle community add errors", async () => {
       const { getEmbedder } =
-        await import("../../../../src/embeddings/embedder");
+        await import("../../../../src/embeddings/embedder-factory");
       (getEmbedder as any).mockRejectedValueOnce(new Error("Embedder error"));
 
       const response = await fastify.inject({

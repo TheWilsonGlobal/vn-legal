@@ -8,7 +8,7 @@ const mockGetEmbedder = vi.fn().mockResolvedValue({
   embed: mockEmbed,
 });
 
-vi.mock("../../../../src/embeddings/embedder", () => ({
+vi.mock("../../../../src/embeddings/embedder-factory", () => ({
   getEmbedder: () => mockGetEmbedder(),
 }));
 

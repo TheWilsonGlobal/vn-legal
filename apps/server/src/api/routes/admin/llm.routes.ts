@@ -4,6 +4,7 @@ import { config } from "../../../shared/config";
 import { activityLog } from "../../../shared/activity-log";
 import { llmTracker } from "../../../shared/llm-tracker";
 import { LlamaLLMAdapter } from "../../../agent/congraph-rag-llm";
+import { getActiveAgentRunner } from "../../../agent/graph/runner";
 import type { AdminRoutesOptions } from "./types";
 
 // The endpoint from .env as loaded at startup, captured before any runtime
@@ -145,6 +146,18 @@ export function registerLlmRoutes(
         llm.setApiUrl(normalized);
       }
 
+      // The agent is Gemini-only (plan §5.3). It accepts this endpoint only when it is a Google host.
+      let agentNote = "";
+      const activeRunner = getActiveAgentRunner();
+      if (activeRunner) {
+        try {
+          activeRunner.setEndpoint(normalized);
+          agentNote = " Agent: endpoint đã cập nhật.";
+        } catch (err) {
+          agentNote = ` Agent: giữ nguyên endpoint Gemini (${(err as Error).message})`;
+        }
+      }
+
       // Probe the new endpoint so the caller gets immediate feedback.
       let status = "disconnected";
       try {
@@ -171,9 +184,10 @@ export function registerLlmRoutes(
         previousApiUrl,
         status,
         message:
-          status === "connected"
+          (status === "connected"
             ? "Đã cập nhật endpoint và kết nối thành công."
-            : "Đã cập nhật endpoint nhưng không kết nối được. Kiểm tra máy chủ LLM.",
+            : "Đã cập nhật endpoint nhưng không kết nối được. Kiểm tra máy chủ LLM.") +
+          agentNote,
       });
     },
   );

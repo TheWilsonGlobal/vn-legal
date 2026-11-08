@@ -6,6 +6,10 @@ import { addGraph } from "../../../scripts/build-graph";
 import { addIndex } from "../../../scripts/build-index";
 import { activityLog } from "../../../shared/activity-log";
 import { config } from "../../../shared/config";
+import {
+  assertNoManifestLock,
+  IndexManifestLockedError,
+} from "../../../embeddings/index-manifest";
 import type { AdminRoutesOptions } from "./types";
 
 export function registerKnowledgeRoutes(
@@ -42,6 +46,18 @@ export function registerKnowledgeRoutes(
         const filePath = join(dataDir, filename);
 
         logger.info(`Admin: Uploading knowledge file ${filename}`);
+
+        // The upload also writes the vector index (addIndex). Refuse a manifested store first (AC 41).
+        try {
+          assertNoManifestLock(config.conGraphVectorDbPath);
+        } catch (err) {
+          if (err instanceof IndexManifestLockedError) {
+            return reply
+              .status(409)
+              .send({ error: err.code, path: err.path, message: err.message });
+          }
+          throw err;
+        }
 
         // Save the file
         await writeFile(filePath, JSON.stringify(content, null, 2));

@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import logger from "../../../shared/logger";
-import { getEmbedder } from "../../../embeddings/embedder";
+import { getEmbedder } from "../../../embeddings/embedder-factory";
 import type { VectorResult } from "../../../shared/types";
 import type { AdminRoutesOptions } from "./types";
 

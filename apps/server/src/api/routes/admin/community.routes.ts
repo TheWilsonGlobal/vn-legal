@@ -2,7 +2,10 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import logger from "../../../shared/logger";
-import { getEmbedder } from "../../../embeddings/embedder";
+import {
+  documentEmbedderOf,
+  getEmbedder,
+} from "../../../embeddings/embedder-factory";
 import { activityLog } from "../../../shared/activity-log";
 import type { AdminRoutesOptions } from "./types";
 
@@ -79,7 +82,19 @@ export function registerCommunityRoutes(
         // 1. Generate embedding for vector store
         const embedder = await getEmbedder();
         const textToEmbed = `${report.title} ${report.summary} ${(report.findings || []).join(" ")}`;
-        const embedding = await embedder.embed(textToEmbed);
+        // Documents take the title prefix on Gemini (R10-02); the legacy embedder keeps embed().
+        const docEmbedder = documentEmbedderOf(embedder);
+        const embedding = docEmbedder
+          ? (
+              await docEmbedder.embedDocuments([
+                {
+                  id: String(report.community_id),
+                  title: String(report.title ?? ""),
+                  text: `${report.summary} ${(report.findings || []).join(" ")}`,
+                },
+              ])
+            )[0]
+          : await embedder.embed(textToEmbed);
 
         // 2. Add to Vector Store
         await vectorStore.addCommunityReports([

@@ -10,7 +10,7 @@ import type {
   ClauseEmbedding,
   ArticleNode,
 } from "../shared/types";
-import type { IEmbedder } from "./embedder-factory";
+import { documentEmbedderOf, type IEmbedder } from "./embedder-factory";
 
 // ----------------------------------------------------------------------------
 // ConGraphDB Vector Store Client
@@ -595,7 +595,16 @@ export class ConGraphIndexingPipeline {
       );
 
       const texts = batch.map((a) => `${a.title} ${a.content}`);
-      const batchEmbeddings = await this.embedder.embedBatch(texts);
+      const docEmbedder = documentEmbedderOf(this.embedder);
+      const batchEmbeddings = docEmbedder
+        ? await docEmbedder.embedDocuments(
+            batch.map((a, j) => ({
+              id: String(j),
+              title: a.title,
+              text: a.content,
+            })),
+          )
+        : await this.embedder.embedBatch(texts);
 
       const data: ArticleEmbedding[] = batch.map((article, index) => ({
         vector: batchEmbeddings[index],
@@ -660,7 +669,16 @@ export class ConGraphIndexingPipeline {
       logger.info(
         `[${batchNum}/${totalBatches}] Embedding ${clauseTexts.length} clauses...`,
       );
-      const clauseEmbeddings = await this.embedder.embedBatch(clauseTexts);
+      const clauseDocEmbedder = documentEmbedderOf(this.embedder);
+      const clauseEmbeddings = clauseDocEmbedder
+        ? await clauseDocEmbedder.embedDocuments(
+            clauseMetadata.map((m, j) => ({
+              id: String(j),
+              title: `${m.article.title} - Khoản ${m.clause.clause_number}`,
+              text: m.clause.text,
+            })),
+          )
+        : await this.embedder.embedBatch(clauseTexts);
 
       // Create clause embeddings
       for (let j = 0; j < clauseMetadata.length; j++) {
@@ -721,7 +739,16 @@ export class ConGraphIndexingPipeline {
 
     // Batch embed all reports at once
     logger.info(`Embedding ${reportTexts.length} community reports...`);
-    const embeddings = await this.embedder.embedBatch(reportTexts);
+    const reportDocEmbedder = documentEmbedderOf(this.embedder);
+    const embeddings = reportDocEmbedder
+      ? await reportDocEmbedder.embedDocuments(
+          validReports.map((r, j) => ({
+            id: String(j),
+            title: r.title,
+            text: `${r.summary} ${(r.findings ?? []).join(" ")}`,
+          })),
+        )
+      : await this.embedder.embedBatch(reportTexts);
 
     // Prepare data for insertion
     const data: any[] = [];

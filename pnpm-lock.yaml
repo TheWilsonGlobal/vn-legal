@@ -38,6 +38,9 @@ importers:
       '@langchain/core':
         specifier: ^1.3.4
         version: 1.3.4(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.223.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.22.1)(zod@3.25.76))(ws@8.22.1)
+      '@langchain/google-genai':
+        specifier: 2.3.4
+        version: 2.3.4(@langchain/core@1.3.4(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.223.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.22.1)(zod@3.25.76))(ws@8.22.1))
       '@langchain/langgraph':
         specifier: ^1.7.0
         version: 1.7.0(@langchain/core@1.3.4(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.223.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.22.1)(zod@3.25.76))(ws@8.22.1))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(zod@3.25.76)
@@ -694,6 +697,10 @@ packages:
       '@modelcontextprotocol/sdk':
         optional: true
 
+  '@google/generative-ai@0.24.1':
+    resolution: {integrity: sha512-MqO+MLfM6kjxcKoy0p1wRzG3b4ZZXtPI+z2IE26UogS2Cm/XHO+7gGRBh6gcJsOiIVoH93UwKvW4HdgiOZCy9Q==}
+    engines: {node: '>=18.0.0'}
+
   '@grpc/grpc-js@1.14.7':
     resolution: {integrity: sha512-W4W/fcBMGRVtG6dW2c7cw2mnpS3hvbBd+oQXjh2iYFTZDk1JJmcNqkM5KSaPubQpamlUUurrlb7G1s9NJeERmQ==}
     engines: {node: '>=12.10.0'}
@@ -792,6 +799,12 @@ packages:
   '@langchain/core@1.3.4':
     resolution: {integrity: sha512-4LnkVpxOzA4BuMPuAQKDDf4SujSzd4WahKk51eyUJzSEsQjyGpbyAgDRWPYr3wzgtAJ59UXewemsyIxRKTXFrA==}
     engines: {node: '>=20'}
+
+  '@langchain/google-genai@2.3.4':
+    resolution: {integrity: sha512-Hq7lEtiQd5KiPquGjwKwzGg/JgbqSQia7CINLjJKoQ4FtolRuxj/mYDql0XZIMTAZJD93eeOk9wo3klEgueMYQ==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@langchain/core': ^1.2.19
 
   '@langchain/langgraph-checkpoint@1.2.2':
     resolution: {integrity: sha512-KL3nzi7I61ll5nANCQe5RoJ5SqTFrE+si9IK6k7IIj9OrPkIKT/Dz0w8CyJF+K7OEuJfA33HvPrZqfzzW1DXDA==}
@@ -4087,6 +4100,8 @@ snapshots:
       - supports-color
       - utf-8-validate
 
+  '@google/generative-ai@0.24.1': {}
+
   '@grpc/grpc-js@1.14.7':
     dependencies:
       '@grpc/proto-loader': 0.8.1
@@ -4190,6 +4205,11 @@ snapshots:
       - '@opentelemetry/sdk-trace-base'
       - openai
       - ws
+
+  '@langchain/google-genai@2.3.4(@langchain/core@1.3.4(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.223.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.22.1)(zod@3.25.76))(ws@8.22.1))':
+    dependencies:
+      '@google/generative-ai': 0.24.1
+      '@langchain/core': 1.3.4(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.223.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.22.1)(zod@3.25.76))(ws@8.22.1)
 
   '@langchain/langgraph-checkpoint@1.2.2(@langchain/core@1.3.4(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.223.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.22.1)(zod@3.25.76))(ws@8.22.1))':
     dependencies:

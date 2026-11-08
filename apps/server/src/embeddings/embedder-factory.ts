@@ -19,6 +19,26 @@ export interface IEmbedder {
   dispose(): Promise<void>;
 }
 
+/**
+ * Document embedding (plan r5 R10-03). Gemini separates documents from queries with a
+ * title prefix; embedDocuments applies it. Embedders without it (legacy transformers)
+ * return null, and callers keep their original input strings unchanged.
+ */
+export interface DocumentEmbedder {
+  embedDocuments(
+    docs: { id: string; title: string; text: string }[],
+  ): Promise<number[][]>;
+}
+
+export function documentEmbedderOf(
+  embedder: IEmbedder,
+): DocumentEmbedder | null {
+  const candidate = embedder as Partial<DocumentEmbedder>;
+  return typeof candidate.embedDocuments === "function"
+    ? (embedder as unknown as DocumentEmbedder)
+    : null;
+}
+
 let embedderInstance: IEmbedder | null = null;
 
 /**
