@@ -316,6 +316,14 @@ export function createLegalAgentRunner(
             sessionId: input.sessionId,
           }),
           signal,
+          modelName: model,
+          onModelCall: async (llm) => {
+            await persist({
+              kind: "llm_call",
+              content: `Lời gọi LLM #${llm.call_index}: ${llm.response.tool_calls.length} lệnh gọi công cụ, ${llm.response.text.length} ký tự trả lời`,
+              llm,
+            });
+          },
         });
         result = await deps.tracer.runInTrace(
           {

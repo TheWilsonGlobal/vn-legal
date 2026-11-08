@@ -10,7 +10,8 @@ const navItems = [
   { id: "community", icon: "fa-users-viewfinder", label: "Cộng đồng" },
   { id: "vector", icon: "fa-database", label: "Vector Store" },
   { id: "llm", icon: "fa-brain", label: "LLM Monitor" },
-  { id: "activities", icon: "fa-history", label: "Nhật ký hoạt động" },
+  { id: "sessions", icon: "fa-comments", label: "Phiên" },
+  { id: "traces", icon: "fa-route", label: "Vết thực thi toàn cục" },
   { id: "settings", icon: "fa-cog", label: "Cấu hình" },
 ];
 

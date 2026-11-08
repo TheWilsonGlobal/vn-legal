@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type {
   Citation,
+  LlmCallDetail,
   ObservationGraph,
   ObservationReport,
   StepKind,
@@ -23,9 +24,10 @@ const RECORD_KINDS = [
   "answer",
   "error",
   "deleted",
+  "llm_call",
 ] as const;
 /** Kinds the caller may append. `session_created` and `deleted` are written by the store only. */
-const APPEND_KINDS = ["query", "step", "answer", "error"] as const;
+const APPEND_KINDS = ["query", "step", "answer", "error", "llm_call"] as const;
 
 /**
  * Size caps on appended records (R7-01). Counted in UTF-16 units (JS string length).
@@ -98,6 +100,37 @@ const reportsSchema = z
   )
   .max(10);
 
+// Full model call, kept whole: prompts and responses are not truncated (the
+// size cap below applies to `content` only). Written by the runner per call.
+const toolCallSchema = z.object({ name: z.string(), args: z.unknown() }).strict();
+
+const llmCallSchema = z
+  .object({
+    call_index: z.number().int().positive(),
+    model: z.string(),
+    latency_ms: z.number().finite().nonnegative(),
+    system: z.string(),
+    messages: z.array(
+      z
+        .object({
+          role: z.enum(["user", "assistant", "tool"]),
+          content: z.string(),
+          tool_calls: z.array(toolCallSchema).optional(),
+          tool_call_id: z.string().optional(),
+          name: z.string().optional(),
+        })
+        .strict(),
+    ),
+    response: z
+      .object({ text: z.string(), tool_calls: z.array(toolCallSchema) })
+      .strict(),
+    usage: z
+      .object({ input: z.number().nonnegative(), output: z.number().nonnegative() })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+
 const recordBase = z
   .object({
     session_id: z.string().regex(SESSION_ID_PATTERN),
@@ -119,6 +152,8 @@ const recordBase = z
     reports: reportsSchema.optional(),
     // Written on answer and error records. Null means the run had no trace.
     trace_url: z.string().nullable().optional(),
+    // Written on llm_call records.
+    llm: llmCallSchema.optional(),
   })
   .strict();
 
@@ -149,6 +184,8 @@ function checkWriteRequired(
       undefined, "required for step records");
     require("citations", rec.citations !==
       undefined, "required for step records");
+  } else if (rec.kind === "llm_call") {
+    require("llm", rec.llm !== undefined, "required for llm_call records");
   } else if (rec.kind === "answer") {
     require("ok", rec.ok !== undefined, "required for answer records");
     require("trace_id", rec.trace_id !==
@@ -227,7 +264,8 @@ export type RecordKind =
   | "step"
   | "answer"
   | "error"
-  | "deleted";
+  | "deleted"
+  | "llm_call";
 
 export interface StoredRecord {
   session_id: string;
@@ -247,6 +285,7 @@ export interface StoredRecord {
   graph?: ObservationGraph;
   reports?: ObservationReport[];
   trace_url?: string | null;
+  llm?: LlmCallDetail;
   prev_hash: string;
   row_hash: string;
 }

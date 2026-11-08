@@ -1,6 +1,9 @@
 import type {
   AdminStats,
   Activity,
+  AdminSession,
+  TraceRecord,
+  TracesPage,
   Community,
   VectorStoreStatus,
   AppConfig,
@@ -20,6 +23,54 @@ export async function fetchActivitiesApi(
 ): Promise<{ activities: Activity[] }> {
   const response = await fetch(`/api/admin/activity?limit=${limit}`);
   return response.json();
+}
+
+export async function fetchAdminSessionsApi(): Promise<{
+  sessions: AdminSession[];
+  total: number;
+}> {
+  const response = await fetch("/api/admin/sessions");
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+export async function fetchAdminTracesApi(params: {
+  sessionId?: string;
+  kind?: string;
+  q?: string;
+  offset: number;
+  limit: number;
+}): Promise<TracesPage> {
+  const qs = new URLSearchParams({
+    offset: String(params.offset),
+    limit: String(params.limit),
+  });
+  if (params.sessionId) qs.set("session_id", params.sessionId);
+  if (params.kind) qs.set("kind", params.kind);
+  if (params.q) qs.set("q", params.q);
+  const response = await fetch(`/api/admin/traces?${qs.toString()}`);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+/** Every record of one session, paged until the server's total is reached. */
+export async function fetchAllSessionRecordsApi(
+  sessionId: string,
+): Promise<TraceRecord[]> {
+  const PAGE_SIZE = 100;
+  const all: TraceRecord[] = [];
+  let offset = 0;
+  for (;;) {
+    const page = await fetchAdminTracesApi({
+      sessionId,
+      offset,
+      limit: PAGE_SIZE,
+    });
+    all.push(...page.records);
+    offset += page.records.length;
+    if (page.records.length === 0 || offset >= page.total) break;
+  }
+  return all;
 }
 
 export async function fetchVectorStoreStatusApi(): Promise<VectorStoreStatus> {

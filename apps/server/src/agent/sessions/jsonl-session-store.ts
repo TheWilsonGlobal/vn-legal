@@ -2,11 +2,14 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type {
+  AuditableSessionStore,
   SessionMeta,
   SessionRecord,
   SessionStore,
   Turn,
 } from "../contract";
+
+type RecordsQuery = Parameters<SessionStore["records"]>[1];
 import { GENESIS_HASH } from "./hash";
 import { readIndexFile, writeIndexAtomic } from "./index-file";
 import {
@@ -41,7 +44,7 @@ export interface SessionStoreOptions {
   isActive: (sessionId: string) => boolean;
 }
 
-export interface JsonlSessionStore extends SessionStore {
+export interface JsonlSessionStore extends AuditableSessionStore {
   /**
    * Reads index.json and every session log, checks them against each other and
    * rejects a torn or corrupt file. Must succeed before any other call. A
@@ -168,6 +171,35 @@ export function createJsonlSessionStore(
     if (!state || state.entry.owner !== owner || state.entry.hidden)
       return null;
     return state;
+  }
+
+  /** Filters the records of the given sessions. Caller holds the serial chain. */
+  async function matchRecords(
+    scope: SessionState[],
+    q: RecordsQuery,
+  ): Promise<{ records: StoredRecord[]; total: number }> {
+    let list = scope;
+    if (q.session_id !== undefined) {
+      const wanted = q.session_id;
+      list = list.filter((s) => s.entry.session_id === wanted);
+    }
+    const needle = q.q ? q.q.normalize("NFC").toLowerCase() : "";
+    const matches: StoredRecord[] = [];
+    for (const state of list) {
+      const id = state.entry.session_id;
+      const path = sessionLogPath(dir, id);
+      for (const rec of parseLogStrict(path, await readLogText(path), id)) {
+        if (q.kind !== undefined && rec.kind !== q.kind) continue;
+        if (needle && !rec.content.normalize("NFC").toLowerCase().includes(needle))
+          continue;
+        matches.push(rec);
+      }
+    }
+    matches.sort(newestFirst);
+    return {
+      records: matches.slice(q.offset, q.offset + q.limit),
+      total: matches.length,
+    };
   }
 
   async function load(): Promise<void> {
@@ -351,30 +383,32 @@ export function createJsonlSessionStore(
         if (scope.length === 0 && !config.iam.requireLogin) {
           scope = [...sessions.values()].filter((s) => !s.entry.hidden);
         }
-        if (q.session_id !== undefined) {
-          const wanted = q.session_id;
-          scope = scope.filter((s) => s.entry.session_id === wanted);
-        }
-        const needle = q.q ? q.q.normalize("NFC").toLowerCase() : "";
-        const matches: StoredRecord[] = [];
-        for (const state of scope) {
-          const id = state.entry.session_id;
-          const path = sessionLogPath(dir, id);
-          for (const rec of parseLogStrict(path, await readLogText(path), id)) {
-            if (q.kind !== undefined && rec.kind !== q.kind) continue;
-            if (
-              needle &&
-              !rec.content.normalize("NFC").toLowerCase().includes(needle)
-            )
-              continue;
-            matches.push(rec);
-          }
-        }
-        matches.sort(newestFirst);
-        return {
-          records: matches.slice(q.offset, q.offset + q.limit),
-          total: matches.length,
-        };
+        return matchRecords(scope, q);
+      });
+    },
+
+    async listAll() {
+      return serial(async () => {
+        usable();
+        return [...sessions.values()]
+          .filter((s) => !s.entry.hidden)
+          .map((s) => ({ ...metaOf(s), owner: s.entry.owner }))
+          .sort((a, b) =>
+            a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0,
+          );
+      });
+    },
+
+    async recordsAll(q) {
+      if (!Number.isInteger(q.offset) || q.offset < 0)
+        throw new TypeError("offset must be an integer >= 0");
+      if (!Number.isInteger(q.limit) || q.limit < 1)
+        throw new TypeError("limit must be an integer >= 1");
+      usable();
+      return serial(async () => {
+        usable();
+        const scope = [...sessions.values()].filter((s) => !s.entry.hidden);
+        return matchRecords(scope, q);
       });
     },
 

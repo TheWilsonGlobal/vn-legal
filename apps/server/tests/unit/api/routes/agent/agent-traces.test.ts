@@ -92,6 +92,7 @@ describe("C8 traces paging and validation", () => {
       answer: 1,
       error: 0,
       deleted: 0,
+      llm_call: 0,
     });
 
     const steps = await app.inject({
@@ -112,6 +113,7 @@ describe("C8 traces paging and validation", () => {
       answer: 1,
       error: 0,
       deleted: 0,
+      llm_call: 0,
     });
   });
 

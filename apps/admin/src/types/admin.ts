@@ -19,6 +19,54 @@ export interface Activity {
   details?: any;
 }
 
+/** A live agent session of any owner (GET /api/admin/sessions). */
+export interface AdminSession {
+  session_id: string;
+  title: string;
+  turns: number;
+  message_count: number;
+  record_count: number;
+  tokens: number;
+  active: boolean;
+  created_at: string;
+  last_active_at: string;
+  owner: string;
+}
+
+/** One chat-model call, kept whole (llm_call records only). */
+export interface LlmCall {
+  call_index: number;
+  model: string;
+  latency_ms: number;
+  system: string;
+  messages: {
+    role: "user" | "assistant" | "tool";
+    content: string;
+    tool_calls?: { name: string; args: unknown }[];
+    tool_call_id?: string;
+    name?: string;
+  }[];
+  response: { text: string; tool_calls: { name: string; args: unknown }[] };
+  usage: { input: number; output: number } | null;
+}
+
+/** One record of a session log (GET /api/admin/traces). */
+export interface TraceRecord {
+  session_id: string;
+  run_id: string | null;
+  seq: number;
+  created_at: string;
+  kind: string;
+  content: string;
+  llm?: LlmCall;
+}
+
+export interface TracesPage {
+  records: TraceRecord[];
+  total: number;
+  kind_counts: Record<string, number>;
+}
+
 export interface Community {
   id: string;
   community_id: string;
@@ -60,6 +108,8 @@ export interface AppConfig {
   embeddingBackend: string;
   embeddingDimension: number;
   embeddingModel: string;
+  llmProvider?: string;
   llmModel: string;
+  graphDbPath?: string;
   [key: string]: unknown;
 }

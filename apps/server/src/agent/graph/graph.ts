@@ -17,6 +17,7 @@ import {
 import { tool as lcTool } from "@langchain/core/tools";
 import type {
   Citation,
+  LlmCallDetail,
   ObservationGraph,
   ObservationReport,
   StepKind,
@@ -106,6 +107,78 @@ export interface BuildGraphOptions {
   emit: EmitStep;
   callbacks?: unknown[];
   signal?: AbortSignal;
+  /** Model name recorded with each call. */
+  modelName?: string;
+  /** Receives every successful chat-model call, in full. The runner persists it. */
+  onModelCall?: (detail: LlmCallDetail) => Promise<void>;
+}
+
+/** Message content as text. Non-string parts are kept as JSON, not dropped. */
+function fullText(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (content === undefined || content === null) return "";
+  try {
+    return JSON.stringify(content);
+  } catch {
+    return String(content);
+  }
+}
+
+interface MessageLike {
+  _getType(): string;
+  content: unknown;
+  tool_calls?: { name: string; args: unknown }[];
+  tool_call_id?: string;
+  name?: string;
+}
+
+function llmCallDetail(p: {
+  callIndex: number;
+  model: string;
+  latencyMs: number;
+  sent: BaseMessage[];
+  ai: AIMessage;
+}): LlmCallDetail {
+  const system: string[] = [];
+  const messages: LlmCallDetail["messages"] = [];
+  for (const raw of p.sent) {
+    const m = raw as unknown as MessageLike;
+    const type = m._getType();
+    const text = fullText(m.content);
+    if (type === "system") {
+      system.push(text);
+      continue;
+    }
+    const entry: LlmCallDetail["messages"][number] = {
+      role: type === "ai" ? "assistant" : type === "tool" ? "tool" : "user",
+      content: text,
+    };
+    if (m.tool_calls && m.tool_calls.length > 0) {
+      entry.tool_calls = m.tool_calls.map((c) => ({ name: c.name, args: c.args }));
+    }
+    if (m.tool_call_id) entry.tool_call_id = m.tool_call_id;
+    if (m.name) entry.name = m.name;
+    messages.push(entry);
+  }
+  const meta = (
+    p.ai as AIMessage & {
+      usage_metadata?: { input_tokens?: number; output_tokens?: number };
+    }
+  ).usage_metadata;
+  return {
+    call_index: p.callIndex,
+    model: p.model,
+    latency_ms: p.latencyMs,
+    system: system.join("\n\n"),
+    messages,
+    response: {
+      text: fullText(p.ai.content),
+      tool_calls: (p.ai.tool_calls ?? []).map((c) => ({ name: c.name, args: c.args })),
+    },
+    usage: meta
+      ? { input: meta.input_tokens ?? 0, output: meta.output_tokens ?? 0 }
+      : null,
+  };
 }
 
 function textOf(content: unknown): string {
@@ -137,7 +210,8 @@ function wrapToolOutput(name: string, ok: boolean, content: string): string {
 }
 
 export function buildAgentGraph(opts: BuildGraphOptions) {
-  const { model, tools, maxSteps, emit, callbacks, signal } = opts;
+  const { model, tools, maxSteps, emit, callbacks, signal, modelName, onModelCall } = opts;
+  let llmCalls = 0;
   const byName = new Map(tools.map((t) => [t.name, t]));
   const lcTools = tools.map((t) =>
     lcTool(async () => "", {
@@ -152,7 +226,21 @@ export function buildAgentGraph(opts: BuildGraphOptions) {
   async function agentNode(state: AgentGraphState) {
     const budgetLeft = state.toolCallsUsed < maxSteps;
     const runner = budgetLeft ? bound : model;
+    const started = Date.now();
     const ai = await runner.invoke(state.messages, callOpts);
+    const latencyMs = Date.now() - started;
+    llmCalls += 1;
+    if (onModelCall) {
+      await onModelCall(
+        llmCallDetail({
+          callIndex: llmCalls,
+          model: modelName ?? "",
+          latencyMs,
+          sent: state.messages,
+          ai,
+        }),
+      );
+    }
     const calls = ai.tool_calls ?? [];
     const text = textOf(ai.content).trim();
 

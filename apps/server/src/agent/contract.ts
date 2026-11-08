@@ -196,12 +196,42 @@ export interface SessionMeta {
   active: boolean;
 }
 
+/** One chat-model call of a run, kept whole (no truncation). Written as an `llm_call` record. */
+export interface LlmCallDetail {
+  /** 1-based index of the model call within its run. */
+  call_index: number;
+  model: string;
+  latency_ms: number;
+  /** Text of every system message sent with this call, joined by a blank line. */
+  system: string;
+  /** Every non-system message sent with this call, in order. */
+  messages: {
+    role: "user" | "assistant" | "tool";
+    content: string;
+    tool_calls?: { name: string; args: unknown }[];
+    tool_call_id?: string;
+    name?: string;
+  }[];
+  response: { text: string; tool_calls: { name: string; args: unknown }[] };
+  /** Null when the provider reported no usage. */
+  usage: { input: number; output: number } | null;
+}
+
 export type SessionRecord = {
   session_id: string;
   run_id: string | null;
   seq: number;
   created_at: string;
-  kind: "session_created" | "query" | "step" | "answer" | "error" | "deleted";
+  kind:
+    | "session_created"
+    | "query"
+    | "step"
+    | "answer"
+    | "error"
+    | "deleted"
+    | "llm_call";
+  /** Only on `llm_call` records. The content field stays a short summary. */
+  llm?: LlmCallDetail;
   step_kind?: StepKind;
   tool?: string | null;
   content: string;
@@ -247,6 +277,19 @@ export interface SessionStore {
   }>; // decision Q13
   // Global counts across all owners (feeds C10 `store`).
   counts(): Promise<{ sessions: number; records: number; hidden: number }>;
+}
+
+/**
+ * Read access across every owner. Only the admin routes (permission logs:read)
+ * use it. Kept apart from SessionStore so owner-scoped fakes stay valid.
+ */
+export interface AuditableSessionStore extends SessionStore {
+  /** Live sessions of all owners, newest created first. */
+  listAll(): Promise<Array<SessionMeta & { owner: string }>>;
+  /** Records of all live sessions, same filters and order as records(). */
+  recordsAll(
+    q: Parameters<SessionStore["records"]>[1],
+  ): Promise<{ records: SessionRecord[]; total: number }>;
 }
 
 export type ObservabilityStatus = {

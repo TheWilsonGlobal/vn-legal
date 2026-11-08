@@ -17,7 +17,8 @@ import { CommunityView } from "./views/CommunityView.tsx";
 import { VectorStoreView } from "./views/VectorStoreView.tsx";
 import { LlmMonitorView } from "./views/LlmMonitorView.tsx";
 import { KnowledgeDataView } from "./views/KnowledgeDataView.tsx";
-import { ActivitiesView } from "./views/ActivitiesView.tsx";
+import { SessionsView } from "./views/SessionsView.tsx";
+import { TracesView } from "./views/TracesView.tsx";
 import { SettingsView } from "./views/SettingsView.tsx";
 
 function App() {
@@ -236,15 +237,10 @@ function App() {
             setZoomLevel={graph.setZoomLevel}
           />
         );
-      case "activities":
-        return (
-          <ActivitiesView
-            activities={adminData.activities}
-            fetchActivities={adminData.fetchActivities}
-            handleOpenActivityJSON={adminData.handleOpenActivityJSON}
-            handleDownloadActivityJSON={adminData.handleDownloadActivityJSON}
-          />
-        );
+      case "sessions":
+        return <SessionsView />;
+      case "traces":
+        return <TracesView />;
       default:
         return <div>View {activeView} is under construction.</div>;
     }

@@ -74,7 +74,8 @@ export function applyRecord(state: SessionState, rec: StoredRecord): void {
   } else if (
     rec.kind === "step" ||
     rec.kind === "answer" ||
-    rec.kind === "error"
+    rec.kind === "error" ||
+    rec.kind === "llm_call"
   ) {
     if (rec.run_id === null || !state.pendingRuns.has(rec.run_id)) {
       throw new Error(`${rec.kind} has no open query for its run_id`);

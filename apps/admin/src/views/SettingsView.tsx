@@ -9,6 +9,13 @@ interface SettingsViewProps {
   handleSaveConfig: () => Promise<void>;
 }
 
+function embeddingBackendLabel(backend: string | undefined): string {
+  if (backend === "gemini") return "Gemini API";
+  if (backend === "api") return "Python API (FastAPI)";
+  if (backend === "llamacpp") return "llama.cpp (GGUF)";
+  return "WebAssembly (transformers.js)";
+}
+
 export function SettingsView({
   tempClientGraphMode,
   setTempClientGraphMode,
@@ -27,7 +34,7 @@ export function SettingsView({
           <form className="settings-form" onSubmit={(e) => e.preventDefault()}>
             <div className="form-group">
               <label>Đường dẫn Database Graph</label>
-              <input type="text" value="/storage/graph.cgraph" readOnly />
+              <input type="text" value={config?.graphDbPath ?? "—"} readOnly />
             </div>
             <div className="form-group">
               <label>Chế độ hiển thị đồ thị của Client</label>
@@ -61,10 +68,7 @@ export function SettingsView({
               <label>Model Embedding</label>
               <input
                 type="text"
-                value={
-                  config?.embeddingModel ||
-                  "paraphrase-multilingual-MiniLM-L12-v2"
-                }
+                value={config?.embeddingModel ?? "—"}
                 readOnly
               />
             </div>
@@ -72,32 +76,36 @@ export function SettingsView({
               <label>Hệ thống Embedding (Backend)</label>
               <input
                 type="text"
-                value={
-                  config?.embeddingBackend === "api"
-                    ? "Python API (FastAPI)"
-                    : "WebAssembly (transformers.js)"
-                }
+                value={embeddingBackendLabel(config?.embeddingBackend)}
                 readOnly
               />
               <small className="text-muted">
-                {config?.embeddingBackend === "api"
-                  ? "🚀 Đang sử dụng Python service cho hiệu suất cao."
-                  : "🐢 Đang sử dụng WebAssembly chạy tại Node.js (Chậm hơn)."}
+                {config?.embeddingBackend === "gemini"
+                  ? "☁️ Embedding gọi Gemini API, khóa được xoay vòng khi hết quota."
+                  : config?.embeddingBackend === "api"
+                    ? "🚀 Đang sử dụng Python service cho hiệu suất cao."
+                    : "🐢 Đang sử dụng WebAssembly chạy tại Node.js (Chậm hơn)."}
               </small>
             </div>
             <div className="form-group">
               <label>Kích thước Vector</label>
               <input
                 type="text"
-                value={config?.embeddingDimension || 384}
+                value={config?.embeddingDimension ?? "—"}
                 readOnly
               />
             </div>
             <div className="form-group">
               <label>Model LLM sử dụng</label>
-              <select value={config?.llmModel || "gpt-4o"}>
-                <option value="gpt-4o">GPT-4o (Khuyên dùng)</option>
-              </select>
+              <input
+                type="text"
+                value={
+                  config?.llmProvider
+                    ? `${config.llmProvider} · ${config.llmModel}`
+                    : (config?.llmModel ?? "—")
+                }
+                readOnly
+              />
             </div>
             <div className="form-actions">
               <button className="btn-primary" onClick={handleSaveConfig}>

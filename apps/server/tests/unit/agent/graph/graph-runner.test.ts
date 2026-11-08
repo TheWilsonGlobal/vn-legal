@@ -234,6 +234,39 @@ describe("agent run with native tool calling", () => {
     expect(calls.map((c) => c.bound)).toEqual([true, true]);
   });
 
+  it("records each model call in full as an llm_call record", async () => {
+    storeStub.appended.length = 0;
+    const { model } = scriptedModel(
+      [],
+      [
+        new AIMessage({
+          content: "",
+          tool_calls: [
+            { id: "c1", name: "search_legal_articles", args: { query: "Điều 25" } },
+          ],
+        }),
+        new AIMessage("Theo [Điều 25], người tham gia được bảo vệ."),
+      ],
+    );
+    const { runner } = makeRunner(model);
+    await drain(runner.stream(input as any, new AbortController().signal));
+
+    const llm = storeStub.appended.filter((r) => r.kind === "llm_call");
+    expect(llm).toHaveLength(2);
+    expect(llm[0].content).toContain("Lời gọi LLM #1");
+    expect(llm[0].llm.call_index).toBe(1);
+    expect(llm[1].llm.call_index).toBe(2);
+    // The system prompt is kept apart from the messages, and is not empty.
+    expect(llm[0].llm.system.length).toBeGreaterThan(0);
+    expect(llm[0].llm.messages.some((m: any) => m.role === "system")).toBe(false);
+    // The first call carries the user's question as its last message.
+    expect(llm[0].llm.messages.at(-1)).toEqual({ role: "user", content: input.query });
+    expect(llm[0].llm.response.tool_calls[0].name).toBe("search_legal_articles");
+    // The second call sees the tool output it was given.
+    expect(llm[1].llm.messages.some((m: any) => m.role === "tool")).toBe(true);
+    expect(llm[1].llm.response.text).toContain("Điều 25");
+  });
+
   it("answers without tools once the tool budget is spent", async () => {
     const toolCall = new AIMessage({
       content: "",

@@ -66,6 +66,7 @@ export function registerConfigRoutes(
               llmProvider: { type: "string" },
               llmModel: { type: "string" },
               clientGraphMode: { type: "string" },
+              graphDbPath: { type: "string" },
             },
           },
         },
@@ -73,14 +74,19 @@ export function registerConfigRoutes(
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {
+        // The agent path embeds with Gemini (config.embedding). The legacy
+        // transformers fields describe a store that is no longer used, so report
+        // the running embedder when it is Gemini.
+        const gemini = config.embedding?.provider === "gemini";
         return reply.send({
           vectorStoreType: config.vectorStoreType,
-          embeddingModel: config.embeddingModel,
-          embeddingDimension: config.embeddingDimension,
-          embeddingBackend: config.embeddingBackend,
+          embeddingModel: gemini ? (config.embedding?.model ?? "") : config.embeddingModel,
+          embeddingDimension: gemini ? config.embedding?.dim : config.embeddingDimension,
+          embeddingBackend: gemini ? "gemini" : config.embeddingBackend,
           llmProvider: config.llm.provider,
           llmModel: config.llm.model,
           clientGraphMode: config.clientGraphMode,
+          graphDbPath: config.graphDbPath,
         });
       } catch (error) {
         logger.error("Failed to get config", error);

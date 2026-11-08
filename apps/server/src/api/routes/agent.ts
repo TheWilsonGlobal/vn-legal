@@ -19,6 +19,7 @@ import type {
   AgentRunner,
   AgentStep,
   AgentTracer,
+  AuditableSessionStore,
   SessionMemory,
   SessionMeta,
   SessionStore,
@@ -94,6 +95,7 @@ const SESSION_KINDS = [
   "answer",
   "error",
   "deleted",
+  "llm_call",
 ] as const;
 
 const LLM_FAILURE_CODES: ReadonlySet<string> = new Set([
@@ -190,6 +192,11 @@ const TracesQuerySchema = z.object({
 interface ResolvedSession {
   sessionId: string;
   created: boolean;
+}
+
+function isAuditableStore(s: SessionStore): s is AuditableSessionStore {
+  const a = s as Partial<AuditableSessionStore>;
+  return typeof a.listAll === "function" && typeof a.recordsAll === "function";
 }
 
 function sendInvalid(reply: FastifyReply, error: z.ZodError) {
@@ -721,6 +728,49 @@ export async function agentRoutes(
       first_bad: v.first_bad,
     });
   });
+
+  // --------------------------------------------------------------------------
+  // Admin audit (permission logs:read, see server.ts policy). Read-only, across
+  // every owner. Registered only when the store can read across owners.
+  // --------------------------------------------------------------------------
+  if (isAuditableStore(store)) {
+    const audit = store;
+
+    fastify.get("/admin/sessions", async (_request, reply) => {
+      const metas = await audit.listAll();
+      const sessions = metas.map((m) => ({ ...toListItem(m), owner: m.owner }));
+      return reply.send({ sessions, total: sessions.length });
+    });
+
+    fastify.get("/admin/traces", async (request, reply) => {
+      const parsed = TracesQuerySchema.safeParse(request.query);
+      if (!parsed.success) return sendInvalid(reply, parsed.error);
+      const { kind, q, session_id: sessionId } = parsed.data;
+      const offset =
+        parsed.data.offset === undefined ? 0 : Number(parsed.data.offset);
+      const limit =
+        parsed.data.limit === undefined ? 50 : Number(parsed.data.limit);
+      if (sessionId !== undefined && !UUID_RE.test(sessionId)) {
+        return reply.code(404).send({ error: "session_not_found" });
+      }
+      const scope = { session_id: sessionId };
+      const page = await audit.recordsAll({ ...scope, kind, q, offset, limit });
+      const counts = await Promise.all(
+        SESSION_KINDS.map((k) =>
+          audit.recordsAll({ ...scope, q, kind: k, offset: 0, limit: 1 }),
+        ),
+      );
+      const kind_counts: Record<string, number> = {};
+      SESSION_KINDS.forEach((k, i) => {
+        kind_counts[k] = counts[i].total;
+      });
+      return reply.send({
+        records: page.records,
+        total: page.total,
+        kind_counts,
+      });
+    });
+  }
 
   // --------------------------------------------------------------------------
   // C9 GET /agent/info

@@ -186,6 +186,8 @@ export async function createServer(options: ServerOptions) {
     // Admin & system routes
     { method: "GET", url: "/api/admin/stats", permission: "graph:read" },
     { method: "GET", url: "/api/admin/activity", permission: "logs:read" },
+    { method: "GET", url: "/api/admin/sessions", permission: "logs:read" },
+    { method: "GET", url: "/api/admin/traces", permission: "logs:read" },
     {
       method: "POST",
       url: "/api/admin/rebuild-graph",
