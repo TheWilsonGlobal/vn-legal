@@ -1,4 +1,10 @@
-import { useState, useId, type ReactNode } from "react";
+import { useState, useId, useEffect, type ReactNode } from "react";
+
+/** A group action from the parent: open or close every response section. */
+export interface SectionsForce {
+  open: boolean;
+  seq: number;
+}
 
 /** Inline **bold** and _italic_ / *italic* */
 function renderBoldText(text: string): ReactNode[] {
@@ -129,13 +135,24 @@ function cleanLines(lines: string[]): string[] {
   return filtered.slice(start, end);
 }
 
+/** Number of response sections (headings) in the text, as MarkdownView shows them. */
+export function countResponseSections(text: string): number {
+  return text.split("\n").filter((line) => checkSectionHeader(line).isHeader).length;
+}
+
 interface SectionItem {
   id: string;
   title: string;
   lines: string[];
 }
 
-export default function MarkdownView({ text }: { text: string }) {
+export default function MarkdownView({
+  text,
+  forceSections,
+}: {
+  text: string;
+  forceSections?: SectionsForce;
+}) {
   const baseId = useId();
 
   // Parse lines into preamble and hierarchical sections
@@ -163,6 +180,16 @@ export default function MarkdownView({ text }: { text: string }) {
   // Track expanded state for each section (all expanded by default)
   const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
 
+  // Group action from the parent: set every section to the requested state.
+  useEffect(() => {
+    if (!forceSections) return;
+    setExpandedMap(
+      Object.fromEntries(sections.map((s) => [s.id, forceSections.open])),
+    );
+    // Runs only when a new group action arrives, not on every re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forceSections]);
+
   const isSectionOpen = (id: string) => expandedMap[id] !== false;
 
   const toggleSection = (id: string) => {
@@ -170,14 +197,6 @@ export default function MarkdownView({ text }: { text: string }) {
       ...prev,
       [id]: prev[id] === undefined ? false : !prev[id],
     }));
-  };
-
-  const setAllSections = (open: boolean) => {
-    const nextMap: Record<string, boolean> = {};
-    sections.forEach((s) => {
-      nextMap[s.id] = open;
-    });
-    setExpandedMap(nextMap);
   };
 
   const hasSections = sections.length > 0;
@@ -191,7 +210,6 @@ export default function MarkdownView({ text }: { text: string }) {
     );
   }
 
-  const allSectionsOpen = sections.every((s) => isSectionOpen(s.id));
   const cleanedPreamble = cleanLines(preamble);
 
   return (
@@ -200,30 +218,6 @@ export default function MarkdownView({ text }: { text: string }) {
       {cleanedPreamble.length > 0 && (
         <div className="markdown-preamble">
           {renderBlockLines(cleanedPreamble)}
-        </div>
-      )}
-
-      {/* Mini section-hierarchy controller if multiple sections exist */}
-      {sections.length >= 2 && (
-        <div className="response-sections-header">
-          <span className="sections-count muted">
-            Cấu trúc phản hồi ({sections.length} phần):
-          </span>
-          <div className="sections-actions">
-            <button
-              type="button"
-              className="btn-section-control"
-              onClick={() => setAllSections(!allSectionsOpen)}
-              title={
-                allSectionsOpen
-                  ? "Thu gọn tất cả các phần"
-                  : "Mở rộng tất cả các phần"
-              }
-            >
-              <span aria-hidden="true">{allSectionsOpen ? "▾ " : "▸ "}</span>
-              {allSectionsOpen ? "Thu gọn các phần" : "Mở rộng các phần"}
-            </button>
-          </div>
         </div>
       )}
 

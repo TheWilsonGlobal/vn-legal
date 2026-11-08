@@ -5,6 +5,7 @@
 // ============================================================================
 
 import { randomUUID } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import {
   AIMessage,
@@ -58,6 +59,7 @@ export class AgentEndpointError extends Error {
 
 export interface AgentRunnerDeps {
   config: AgentConfig & {
+    conGraphVectorDbPath?: string;
     embedding: {
       provider?: string;
       model?: string;
@@ -86,7 +88,9 @@ export interface LegalAgentRunner extends AgentRunner {
 }
 
 function redact(text: string, secret: string | undefined): string {
-  return secret ? text.split(secret).join("[redacted]") : text;
+  const noKey = secret ? text.split(secret).join("[redacted]") : text;
+  // Upstream URLs (the Gemini endpoint, with its path) are not shown to the client either.
+  return noKey.replace(/https?:\/\/\S+/g, "[url]");
 }
 
 function classify(
@@ -99,6 +103,7 @@ function classify(
     | "llm_auth_error"
     | "llm_error"
     | "tool_error"
+    | "embedding_error"
     | "aborted"
     | "internal";
   detail: string;
@@ -106,7 +111,9 @@ function classify(
   const raw =
     err instanceof Error ? `${err.name}: ${err.message}` : String(err);
   const detail = redact(raw, secret).slice(0, 500);
-  if (err instanceof ToolFailure) return { code: "tool_error", detail };
+  if (err instanceof ToolFailure) {
+    return { code: err.code ?? "tool_error", detail };
+  }
   if (/aborted/i.test(raw)) return { code: "aborted", detail };
   if (/\b429\b|RESOURCE_EXHAUSTED|rate.?limit|quota/i.test(raw))
     return { code: "llm_rate_limited", detail };
@@ -151,11 +158,27 @@ export function createLegalAgentRunner(
       provider,
       model: cfg.embedding.model ?? "gemini-embedding-2",
       dim: cfg.embedding.dim,
-      index_id:
-        provider === "transformers"
-          ? "legacy-transformers-384"
-          : "congraph_vectors_gemini-embedding-2_768",
+      index_id: indexIdOf(provider),
     };
+  }
+
+  /**
+   * The index_id the store was built with, read from the manifest next to
+   * CONGRAPH_VECTOR_DB_PATH (plan §5.6). Falls back to the id the build uses.
+   */
+  function indexIdOf(provider: "gemini" | "transformers"): string {
+    if (provider === "transformers") return "legacy-transformers-384";
+    const storePath = cfg.conGraphVectorDbPath;
+    try {
+      const manifestPath = storePath ? `${storePath}.manifest.json` : "";
+      if (manifestPath && existsSync(manifestPath)) {
+        const id = JSON.parse(readFileSync(manifestPath, "utf8")).index_id;
+        if (typeof id === "string" && id.length > 0) return id;
+      }
+    } catch {
+      // Unreadable manifest: boot refuses to start on it, so the fallback is for display only.
+    }
+    return "gemini-embedding-2-768";
   }
 
   function toContext(

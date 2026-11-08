@@ -122,6 +122,10 @@ export const config = {
     maxConcurrency: intEnv("EMBED_MAX_CONCURRENCY", 2),
     maxTokensBudget: intEnv("EMBED_MAX_TOKENS_BUDGET", 2000000),
     apiKey: env("GEMINI_EMBEDDING_API_KEY"),
+    // Optional extra keys, tried in order only when a key is over quota (see key-rotation.ts).
+    fallbackApiKeys: [env("GEMINI_EMBEDDING_API_KEY_2"), env("GEMINI_EMBEDDING_API_KEY_3")]
+      .filter((k): k is string => typeof k === "string" && k.trim().length > 0)
+      .filter((k, i, all) => all.indexOf(k) === i),
   },
 
   // Retrieval parameters

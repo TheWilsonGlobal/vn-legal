@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AgentStep, Citation } from "../../types/agent";
+import type { SectionsForce } from "../../components/MarkdownView";
 import CitationBreadcrumbs from "./CitationBreadcrumbs";
 
 const TOOL_ICONS: Record<string, string> = {
@@ -25,14 +26,21 @@ interface Props {
   step: AgentStep;
   onOpenCitation: (citation: Citation) => void;
   defaultOpen?: boolean;
+  /** Group action from the parent: open or close this step's details. */
+  forceOpen?: SectionsForce;
 }
 
 export default function StepItem({
   step,
   onOpenCitation,
   defaultOpen = true,
+  forceOpen,
 }: Props) {
   const [open, setOpen] = useState(defaultOpen);
+
+  useEffect(() => {
+    if (forceOpen) setOpen(forceOpen.open);
+  }, [forceOpen]);
 
   return (
     <li

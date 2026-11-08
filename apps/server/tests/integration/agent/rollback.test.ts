@@ -73,6 +73,7 @@ describe("AC 42: rollback drill on a COPY of the old store", () => {
         ...(await deadLlmEnv()), // chat endpoint only; not an embedding setting
         CONGRAPH_VECTOR_DB_PATH: copyStore,
         EMBEDDING_PROVIDER: "transformers",
+        EMBEDDING_DIM: "384", // rollback is provider + dim + path together (plan 5.6)
       },
     });
     expect(server.log()).toMatch(/\[WARN\][^\n]*rollback[^\n]*transformers/i);
@@ -95,6 +96,7 @@ describe("AC 42: rollback drill on a COPY of the old store", () => {
         env: {
           CONGRAPH_VECTOR_DB_PATH: copyStore,
           EMBEDDING_PROVIDER: "transformers",
+          EMBEDDING_DIM: "384",
         },
       });
       const run = await new Client(server.base).post(

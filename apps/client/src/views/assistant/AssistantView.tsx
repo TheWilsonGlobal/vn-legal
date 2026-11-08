@@ -312,18 +312,28 @@ export default function AssistantView(props: ViewProps) {
     setTurns((all) => all.map((t) => ({ ...t, queryOpen: next })));
   };
 
-  const allStepsOpen =
-    turns.length > 0 && turns.every((t) => t.stepsOpen !== false);
-  const toggleAllSteps = () => {
-    const next = !allStepsOpen;
-    setTurns((all) => all.map((t) => ({ ...t, stepsOpen: next })));
+  // Các bước thực thi group: as for the answer, collapsing closes each step's
+  // details and keeps the step rows visible.
+  const setAllSteps = (open: boolean) => {
+    setTurns((all) =>
+      all.map((t) => ({
+        ...t,
+        stepsOpen: open ? true : t.stepsOpen,
+        stepsForce: { open, seq: (t.stepsForce?.seq ?? 0) + 1 },
+      })),
+    );
   };
 
-  const allAnswersOpen =
-    turns.length > 0 && turns.every((t) => t.answerOpen !== false);
-  const toggleAllAnswers = () => {
-    const next = !allAnswersOpen;
-    setTurns((all) => all.map((t) => ({ ...t, answerOpen: next })));
+  // Trợ lý group: opening also shows the answer; both directions set every
+  // response section, so collapsing leaves the answer's headings visible.
+  const setAllAnswers = (open: boolean) => {
+    setTurns((all) =>
+      all.map((t) => ({
+        ...t,
+        answerOpen: open ? true : t.answerOpen,
+        sectionsForce: { open, seq: (t.sectionsForce?.seq ?? 0) + 1 },
+      })),
+    );
   };
 
   const newSession = async () => {
@@ -395,6 +405,8 @@ export default function AssistantView(props: ViewProps) {
             turn={t}
             onOpenCitation={setOpenCitation}
             onToggleSection={handleToggleSection}
+            onSetAllSteps={setAllSteps}
+            onSetAllAnswers={setAllAnswers}
           />
         ))}
         <div ref={endRef} />

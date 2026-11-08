@@ -2,6 +2,7 @@ import type { InfoState, ViewId } from "../types/views";
 import { VIEWS } from "./viewRegistry";
 import { signInWithGoogle, signOut } from "../api/auth";
 import type { SessionListItem } from "../types/agent";
+import SegmentedToggle from "../components/SegmentedToggle";
 
 export interface UserProfile {
   id: string;
@@ -119,22 +120,21 @@ export function Topbar({
           hierarchyControls &&
           hierarchyControls.turnCount > 0 && (
             <div className="topbar-hierarchy-controls">
-              <button
-                type="button"
-                className="topbar-hierarchy-btn"
-                onClick={hierarchyControls.expandAll}
-                title="Mở rộng tất cả các phần"
-              >
-                <span aria-hidden="true">▾▾ </span>Mở rộng tất cả
-              </button>
-              <button
-                type="button"
-                className="topbar-hierarchy-btn"
-                onClick={hierarchyControls.collapseAll}
-                title="Thu gọn tất cả các phần"
-              >
-                <span aria-hidden="true">▸▸ </span>Thu gọn tất cả
-              </button>
+              <SegmentedToggle
+                ariaLabel="Mở rộng hoặc thu gọn tất cả các phần"
+                options={[
+                  {
+                    label: "Mở rộng tất cả",
+                    icon: "expand",
+                    onSelect: hierarchyControls.expandAll,
+                  },
+                  {
+                    label: "Thu gọn tất cả",
+                    icon: "collapse",
+                    onSelect: hierarchyControls.collapseAll,
+                  },
+                ]}
+              />
             </div>
           )}
       </div>

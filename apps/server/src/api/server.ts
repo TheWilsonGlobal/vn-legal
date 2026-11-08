@@ -6,6 +6,7 @@ import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
+import fs from "fs";
 import path from "path";
 import type { LegalConsultationAgent } from "../agent/setup";
 import type { GraphClient } from "../graph/client";
@@ -20,6 +21,7 @@ import { configRoutes } from "./routes/config";
 import { authRoutes } from "./routes/auth";
 import { agentRoutes, type AgentRoutesOptions } from "./routes/agent";
 import { createJsonlSessionStore } from "../agent/sessions/jsonl-session-store";
+import { EmbeddingFailure } from "../agent/graph/embedding-failure";
 import { createSessionMemory } from "../agent/memory/session-memory";
 import { createAgentTracer } from "../observability/tracer";
 import { policyHook, type PolicyEntry } from "./middleware/iamAuth";
@@ -56,6 +58,32 @@ interface ServerOptions {
 // ----------------------------------------------------------------------------
 // Create Server
 // ----------------------------------------------------------------------------
+
+/**
+ * Embedding failures seen by the retrieval layer on the agent path (AC 38). Hybrid
+ * retrieval turns an error into an empty result, so the failure is recorded here
+ * and the agent adapter below throws it instead.
+ */
+const agentEmbedding: { failed?: string } = {};
+
+function withEmbeddingFailureRecording<T extends object>(embedder: T): T {
+  return new Proxy(embedder, {
+    get(target, prop) {
+      if (prop === "embed") {
+        return async (text: string) => {
+          try {
+            return await (target as any).embed(text);
+          } catch (err) {
+            agentEmbedding.failed = err instanceof Error ? err.message : String(err);
+            throw err;
+          }
+        };
+      }
+      const value = Reflect.get(target, prop, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+}
 
 export async function createServer(options: ServerOptions) {
   const { agent, graph, vectorStore } = options;
@@ -274,10 +302,10 @@ export async function createServer(options: ServerOptions) {
       dir: sessionsDir,
       isActive: (id) => Boolean(memoryHolder.instance?.isActive(id)),
     });
-    try {
+    // Only a missing directory (fresh setup) is tolerated. A torn or corrupt session
+    // log must stop the server from starting (plan AC 21); swallowing it here hid that.
+    if (fs.existsSync(sessionsDir)) {
       await sessionStore.load();
-    } catch {
-      // directory might be uninitialized in fresh setup
     }
 
     const memoryInstance = createSessionMemory({
@@ -298,8 +326,14 @@ export async function createServer(options: ServerOptions) {
       config: config as any,
       // Resolved per call, so building the server never needs the legacy agent's retrieval.
       retrieval: {
-        retrieve: (query, mode, filters) =>
-          options.agent.getRetrieval().retrieve(query, mode, filters),
+        retrieve: async (query, mode, filters) => {
+          agentEmbedding.failed = undefined;
+          const ctx = await options.agent.getRetrieval().retrieve(query, mode, filters);
+          if (agentEmbedding.failed !== undefined) {
+            throw new EmbeddingFailure(agentEmbedding.failed);
+          }
+          return ctx;
+        },
       },
       store: sessionStore,
       memory: memoryInstance,
@@ -440,7 +474,11 @@ if (isMainModule) {
       // 3. Initialize Retrieval with Template LLM (fast, database-only operations)
       const storage = createStorageAdapter(graph, vectorStore);
       const retrievalLlm = createLLMAdapter(embedder, { provider: "template" });
-      const retrieval = createHybridRetrieval(storage, retrievalLlm, embedder);
+      const retrieval = createHybridRetrieval(
+        storage,
+        retrievalLlm,
+        withEmbeddingFailureRecording(embedder),
+      );
 
       // 4. Initialize Agent with the real LLM (used to generate final consultation text)
       const agent = createLegalConsultationAgent(retrieval, llm);

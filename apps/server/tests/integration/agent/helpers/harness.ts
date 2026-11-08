@@ -471,6 +471,12 @@ export class Client {
       onEvent?: (e: SseEvent) => void;
     } = {},
   ): Promise<StreamResult> {
+    // Live runs share the Gemini free-tier per-minute quota (HTTP 429). LIVE_PAUSE_MS
+    // spaces the queries out; 0 (default) keeps the original timing.
+    const pauseMs = Number(process.env.LIVE_PAUSE_MS ?? 0);
+    if (pauseMs > 0 && process.env.VN_LEGAL_LIVE === "1") {
+      await new Promise((resolve) => setTimeout(resolve, pauseMs));
+    }
     const t0 = Date.now();
     const res = await fetch(`${this.base}/api/agent/stream`, {
       method: "POST",

@@ -5,6 +5,7 @@
 import { config } from "../shared/config";
 import logger from "../shared/logger";
 import { ArticleNode, ArticleClause } from "../shared/types";
+import { withKeyRotation } from "./key-rotation";
 
 // Embedder types
 export interface IEmbedder {
@@ -76,6 +77,24 @@ export async function getEmbedder(): Promise<IEmbedder> {
       maxConcurrency: config.embedding.maxConcurrency,
     });
     await embedderInstance.initialize();
+    const fallbackKeys = config.embedding.fallbackApiKeys ?? [];
+    if (fallbackKeys.length > 0) {
+      // Same model and dimension, other keys: only quota errors rotate (key-rotation.ts).
+      const fallbacks = [];
+      for (const key of fallbackKeys) {
+        const alt = new GeminiEmbedder({
+          apiKey: key,
+          model,
+          dim: config.embedding.dim,
+          batchSize: config.embedding.batchSize,
+          maxConcurrency: config.embedding.maxConcurrency,
+        });
+        await alt.initialize();
+        fallbacks.push(alt);
+      }
+      embedderInstance = withKeyRotation(embedderInstance, fallbacks) as IEmbedder;
+      logger.info(`Gemini embedding key rotation enabled: ${fallbackKeys.length} fallback key(s)`);
+    }
     return embedderInstance;
   }
   if (provider === "transformers") {

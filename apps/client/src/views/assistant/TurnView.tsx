@@ -1,5 +1,9 @@
-import { useId, useState, useEffect } from "react";
-import MarkdownView from "../../components/MarkdownView";
+import { useId } from "react";
+import SegmentedToggle from "../../components/SegmentedToggle";
+import MarkdownView, {
+  countResponseSections,
+  type SectionsForce,
+} from "../../components/MarkdownView";
 import type { AgentStep, Citation } from "../../types/agent";
 import StepItem from "./StepItem";
 
@@ -17,62 +21,66 @@ export interface TurnState {
   queryOpen?: boolean;
   stepsOpen?: boolean;
   answerOpen?: boolean;
+  /** Last group action on the answer's response sections. */
+  sectionsForce?: SectionsForce;
+  /** Last group action on the steps. */
+  stepsForce?: SectionsForce;
 }
 
 interface Props {
   turn: TurnState;
   onOpenCitation: (citation: Citation) => void;
   onToggleSection?: (key: string, section: "query" | "steps" | "answer") => void;
+  /** Opens (true) or closes (false) the steps section of every turn. */
+  onSetAllSteps?: (open: boolean) => void;
+  /** Opens (true) or closes (false) the answer section of every turn. */
+  onSetAllAnswers?: (open: boolean) => void;
+}
+
+/** Mở rộng / Thu gọn tất cả, shown at the right end of a section header. */
+function GroupControls({
+  onOpen,
+  label,
+}: {
+  onOpen: (open: boolean) => void;
+  label: string;
+}) {
+  return (
+    <span className="turn-group-controls">
+      <SegmentedToggle
+        ariaLabel={`${label}: mở rộng hoặc thu gọn`}
+        options={[
+          { label: "Mở rộng", icon: "expand", onSelect: () => onOpen(true) },
+          { label: "Thu gọn", icon: "collapse", onSelect: () => onOpen(false) },
+        ]}
+      />
+    </span>
+  );
 }
 
 export default function TurnView({
   turn,
   onOpenCitation,
   onToggleSection,
+  onSetAllSteps,
+  onSetAllAnswers,
 }: Props) {
-  const [queryOpen, setQueryOpen] = useState(turn.queryOpen ?? true);
-  const [stepsOpen, setStepsOpen] = useState(turn.stepsOpen ?? true);
-  const [answerOpen, setAnswerOpen] = useState(turn.answerOpen ?? true);
-
-  // Sync with parent props when changed globally
-  useEffect(() => {
-    if (turn.queryOpen !== undefined) setQueryOpen(turn.queryOpen);
-  }, [turn.queryOpen]);
-
-  useEffect(() => {
-    if (turn.stepsOpen !== undefined) setStepsOpen(turn.stepsOpen);
-  }, [turn.stepsOpen]);
-
-  useEffect(() => {
-    if (turn.answerOpen !== undefined) setAnswerOpen(turn.answerOpen);
-  }, [turn.answerOpen]);
+  // The parent's flags are the single source of truth. Local copies drifted
+  // from them, so a group "collapse" could be a no-op.
+  const queryOpen = turn.queryOpen ?? true;
+  const stepsOpen = turn.stepsOpen ?? true;
+  const answerOpen = turn.answerOpen ?? true;
 
   const stepsId = useId();
   const queryId = useId();
   const answerId = useId();
   const streaming = turn.status === "streaming";
   const showAnswer = turn.status !== "error" && turn.answer !== "";
+  const answerSections = countResponseSections(turn.answer);
 
-  const handleToggleQuery = () => {
-    setQueryOpen((v) => {
-      onToggleSection?.(turn.key, "query");
-      return !v;
-    });
-  };
-
-  const handleToggleSteps = () => {
-    setStepsOpen((v) => {
-      onToggleSection?.(turn.key, "steps");
-      return !v;
-    });
-  };
-
-  const handleToggleAnswer = () => {
-    setAnswerOpen((v) => {
-      onToggleSection?.(turn.key, "answer");
-      return !v;
-    });
-  };
+  const handleToggleQuery = () => onToggleSection?.(turn.key, "query");
+  const handleToggleSteps = () => onToggleSection?.(turn.key, "steps");
+  const handleToggleAnswer = () => onToggleSection?.(turn.key, "answer");
 
   return (
     <article className="turn glass-card">
@@ -109,19 +117,24 @@ export default function TurnView({
 
         return (
           <div className="turn-section turn-steps-section">
-            <button
-              type="button"
-              className="trace-toggle section-toggle"
-              aria-expanded={stepsOpen}
-              aria-controls={stepsId}
-              onClick={handleToggleSteps}
-            >
-              <span className="toggle-chevron" aria-hidden="true">
-                {stepsOpen ? "▾" : "▸"}
-              </span>
-              <span>Các bước thực thi ({reasoningSteps.length})</span>
-              {streaming && <span className="muted"> · đang chạy…</span>}
-            </button>
+            <div className="turn-group-header">
+              <button
+                type="button"
+                className="trace-toggle section-toggle"
+                aria-expanded={stepsOpen}
+                aria-controls={stepsId}
+                onClick={handleToggleSteps}
+              >
+                <span className="toggle-chevron" aria-hidden="true">
+                  {stepsOpen ? "▾" : "▸"}
+                </span>
+                <span>Các bước thực thi ({reasoningSteps.length})</span>
+                {streaming && <span className="muted"> · đang chạy…</span>}
+              </button>
+              {onSetAllSteps && (
+                <GroupControls label="Các bước thực thi" onOpen={onSetAllSteps} />
+              )}
+            </div>
             {stepsOpen && (
               <ol className="steps" id={stepsId} role="list">
                 {reasoningSteps.map((s, idx) => (
@@ -129,6 +142,7 @@ export default function TurnView({
                     key={s.index ?? idx}
                     step={s}
                     onOpenCitation={onOpenCitation}
+                    forceOpen={turn.stepsForce}
                   />
                 ))}
               </ol>
@@ -160,7 +174,7 @@ export default function TurnView({
       {/* 3. Phản hồi / Câu trả lời (Response) */}
       {(showAnswer || streaming) && (
         <div className="turn-section turn-answer-section">
-          <div className="turn-answer-header">
+          <div className="turn-answer-header turn-group-header">
             <button
               type="button"
               className="section-toggle turn-answer-toggle"
@@ -171,13 +185,14 @@ export default function TurnView({
               <span className="toggle-chevron" aria-hidden="true">
                 {answerOpen ? "▾" : "▸"}
               </span>
-              <span className="turn-role assistant-role">Trợ lý</span>
-              {!answerOpen && (
-                <span className="answer-snippet muted">
-                  : {turn.answer.trim().slice(0, 80).replace(/[#*`_]/g, "")}…
-                </span>
-              )}
+              <span className="turn-role assistant-role">
+                Trợ lý
+                {answerSections > 0 && ` (${answerSections})`}
+              </span>
             </button>
+            {onSetAllAnswers && (
+              <GroupControls label="Trợ lý" onOpen={onSetAllAnswers} />
+            )}
           </div>
           {answerOpen && (
             <div
@@ -187,7 +202,9 @@ export default function TurnView({
               aria-atomic="false"
               aria-busy={streaming}
             >
-              {showAnswer && <MarkdownView text={turn.answer} />}
+              {showAnswer && (
+                <MarkdownView text={turn.answer} forceSections={turn.sectionsForce} />
+              )}
             </div>
           )}
         </div>

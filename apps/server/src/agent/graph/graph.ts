@@ -7,6 +7,7 @@
 // AgentEvents. No template answer exists on any path.
 // ============================================================================
 
+import { EmbeddingFailure } from "./embedding-failure";
 import { Annotation, END, START, StateGraph } from "@langchain/langgraph";
 import {
   AIMessage,
@@ -42,6 +43,8 @@ export class ToolFailure extends Error {
   constructor(
     readonly toolName: string,
     detail: string,
+    /** Optional error code the runner reports instead of tool_error (e.g. embedding_error). */
+    readonly code?: "embedding_error",
   ) {
     super(`${toolName} failed: ${detail}`);
     this.name = "ToolFailure";
@@ -269,6 +272,7 @@ export function buildAgentGraph(opts: BuildGraphOptions) {
         throw new ToolFailure(
           spec.name,
           err instanceof Error ? err.message : String(err),
+          err instanceof EmbeddingFailure ? "embedding_error" : undefined,
         );
       }
       emit({
