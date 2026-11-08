@@ -32,6 +32,7 @@ interface ToolItem {
   usageInPipeline: string;
 }
 
+// The four tools the chat agent registers (apps/server/src/agent/graph/tools.ts).
 const AGENT_TOOLS: ToolItem[] = [
   {
     id: "search_legal_articles",
@@ -40,73 +41,45 @@ const AGENT_TOOLS: ToolItem[] = [
     type: "Hybrid Retrieval",
     badge: "primary",
     description:
-      "Tìm kiếm ngữ nghĩa và từ khóa trên cơ sở dữ liệu vector kết hợp đồ thị quan hệ pháp luật.",
-    parameters:
-      "query (string), filters (part, chapter, section), mode ('auto' | 'local' | 'global')",
+      "Tìm các điều luật khớp ngữ nghĩa, mở rộng theo đồ thị tham chiếu giữa các điều, và kèm báo cáo tổng quan cộng đồng.",
+    parameters: "query (string, tối đa 500 ký tự)",
     usageInPipeline:
-      "Được gọi khi phân tích câu hỏi để tìm các điều luật hạt giống (seed articles) có độ tương đồng cao nhất.",
+      "Model gọi ở đầu lượt để tìm căn cứ pháp lý. Mỗi lượt gọi cho kết quả gồm điều khớp ngữ nghĩa, điều qua tham chiếu và báo cáo cộng đồng.",
   },
   {
-    id: "retrieveLegalContext",
-    name: "Truy xuất ngữ cảnh pháp luật (Retrieve Legal Context)",
-    funcName: "retrieveLegalContext",
-    type: "GraphRAG & PathRAG",
+    id: "get_article",
+    name: "Lấy một điều luật (Get Article)",
+    funcName: "get_article",
+    type: "Lookup",
     badge: "info",
-    description:
-      "Khai thác đồ thị tri thức đa tầng để mở rộng các điều luật liên quan, tham chiếu chéo (HAS_CLAUSE, REFERENCES).",
-    parameters:
-      "retrieval (HybridRetrieval), query (string), mode ('local' | 'global')",
+    description: "Lấy nội dung đúng một điều luật theo số điều.",
+    parameters: "article_number (number, từ 1 đến 100000)",
     usageInPipeline:
-      "Duyệt đường dẫn quan hệ pháp lý và thu thập báo cáo cụm cộng đồng (community reports).",
+      "Model gọi khi người dùng hỏi trực tiếp một điều cụ thể, ví dụ Điều 25.",
   },
   {
-    id: "analyzeLegalEntities",
-    name: "Phân tích thực thể pháp lý (Analyze Legal Entities)",
-    funcName: "analyzeLegalEntities",
-    type: "Entity Extraction",
-    badge: "success",
-    description:
-      "Phát hiện và trích xuất các thực thể pháp lý: cá nhân, tổ chức, quan hệ tài sản, hợp đồng, quyền nhân thân.",
-    parameters: "text (string)",
-    usageInPipeline:
-      "Tách các chủ thể và khách thể trong vụ việc để xác định phạm vi pháp luật điều chỉnh.",
-  },
-  {
-    id: "extractLegalConcepts",
-    name: "Trích xuất khái niệm pháp lý (Extract Legal Concepts)",
-    funcName: "extractLegalConcepts",
-    type: "Concept Linking",
+    id: "get_community_context",
+    name: "Báo cáo tổng quan cộng đồng (Community Context)",
+    funcName: "get_community_context",
+    type: "Global Synthesis",
     badge: "warning",
     description:
-      "Nhận diện các khái niệm pháp lý cốt lõi theo Bộ luật Dân sự 2015 và xếp hạng mức độ liên quan.",
-    parameters: "context (LegalContextBundle)",
+      "Lấy các báo cáo tổng quan (community reports) về một chủ đề pháp luật.",
+    parameters: "query (string, tối đa 500 ký tự)",
     usageInPipeline:
-      "Liên kết thuật ngữ chuyên môn với quy chuẩn và nguyên tắc cơ bản trong BLDS.",
+      "Model gọi khi câu hỏi mang tính khái quát hoặc tổng hợp theo chủ đề.",
   },
   {
-    id: "getHierarchicalContext",
-    name: "Ngữ cảnh phân cấp pháp điển (Hierarchical Context)",
-    funcName: "getHierarchicalContext",
-    type: "Legal Taxonomy",
-    badge: "info",
+    id: "recall_session",
+    name: "Nhớ lại phiên hiện tại (Recall Session)",
+    funcName: "recall_session",
+    type: "Session Memory",
+    badge: "success",
     description:
-      "Xây dựng breadcrumb phân cấp pháp luật: Phần -> Chương -> Mục -> Tiểu mục -> Điều luật.",
-    parameters: "context (LegalContextBundle)",
+      "Tìm câu hỏi hoặc câu trả lời trước đó trong chính phiên này. Không đọc phiên khác.",
+    parameters: "key (string, tối đa 200 ký tự)",
     usageInPipeline:
-      "Cung cấp ngữ cảnh cấu trúc để trích dẫn nguồn luật chính xác và đầy đủ.",
-  },
-  {
-    id: "formatArticleReference",
-    name: "Định dạng tham chiếu điều luật (Format Article Reference)",
-    funcName: "formatArticleReference",
-    type: "Citation & Formatting",
-    badge: "primary",
-    description:
-      "Định dạng trích dẫn điều luật, tiêu đề và trích đoạn phục vụ trả lời tham vấn và tạo nguồn trích dẫn.",
-    parameters:
-      "articleNumber (number), title (string), snippet (optional string)",
-    usageInPipeline:
-      "Tạo danh mục trích dẫn chuẩn hóa hiển thị trong câu trả lời tư vấn pháp luật.",
+      "Model gọi khi người dùng hỏi lại nội dung đã trao đổi trong phiên.",
   },
 ];
 
