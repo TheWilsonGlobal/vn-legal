@@ -779,3 +779,114 @@ a:focus-visible,
 .seg-toggle-icon {
   flex: 0 0 auto;
 }
+
+/* ---- Observation step: text / graph tabs ---- */
+.obs-tabs {
+  margin: 8px 0 6px;
+}
+.obs-graph {
+  margin: 4px 0 8px;
+}
+.obs-graph-scroll {
+  overflow-x: auto;
+  border: 1px solid rgba(129, 140, 248, 0.16);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.5);
+  padding: 4px;
+}
+.obs-graph svg {
+  display: block;
+  min-width: 100%;
+}
+.obs-edge {
+  fill: none;
+  stroke: rgba(148, 163, 184, 0.55);
+  stroke-width: 1.5;
+}
+.obs-arrow {
+  fill: rgba(148, 163, 184, 0.7);
+}
+.obs-node rect {
+  stroke-width: 1.5;
+}
+.obs-node-vector rect {
+  fill: rgba(99, 102, 241, 0.22);
+  stroke: #818cf8;
+}
+.obs-node-path rect {
+  fill: rgba(20, 184, 166, 0.16);
+  stroke: #2dd4bf;
+}
+.obs-node-num {
+  fill: #e2e8f0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.obs-node-title {
+  fill: #94a3b8;
+  font-size: 11px;
+}
+.obs-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 2px 0;
+  font-size: 0.74rem;
+}
+.obs-legend .obs-dot + * {
+  margin-right: 8px;
+}
+.obs-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-left: 6px;
+}
+.obs-dot-vector {
+  background: #818cf8;
+}
+.obs-dot-path {
+  background: #2dd4bf;
+}
+
+/* ---- Observation step: community synthesis tab ---- */
+.community-reports {
+  list-style: none;
+  margin: 6px 0 8px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.community-report {
+  border: 1px solid rgba(129, 140, 248, 0.18);
+  border-left: 3px solid #a78bfa;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.5);
+  padding: 9px 12px;
+}
+.community-report-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.community-report-title {
+  color: #c4b5fd;
+  font-weight: 600;
+  font-size: 0.86rem;
+}
+.community-report-rating {
+  flex: none;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 0.72rem;
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+.community-report-summary {
+  margin: 6px 0 0;
+  color: #cbd5e1;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}

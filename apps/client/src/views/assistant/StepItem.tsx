@@ -2,6 +2,16 @@ import { useEffect, useState } from "react";
 import type { AgentStep, Citation } from "../../types/agent";
 import type { SectionsForce } from "../../components/MarkdownView";
 import CitationBreadcrumbs from "./CitationBreadcrumbs";
+import ObservationGraphView from "./ObservationGraphView";
+import CommunityReports from "./CommunityReports";
+
+type PaneKind = "text" | "graph" | "reports";
+
+const TAB_LABEL: Record<PaneKind, string> = {
+  text: "Văn bản",
+  graph: "Đồ thị",
+  reports: "Tổng hợp",
+};
 
 const TOOL_ICONS: Record<string, string> = {
   search_legal_articles: "🔍",
@@ -37,6 +47,15 @@ export default function StepItem({
   forceOpen,
 }: Props) {
   const [open, setOpen] = useState(defaultOpen);
+  const [view, setView] = useState<PaneKind>("text");
+
+  // Panes this step has data for. Text is shown first, then graph, then synthesis.
+  const tabs: PaneKind[] = [
+    ...(step.citations && step.citations.length > 0 ? (["text"] as const) : []),
+    ...(step.graph && step.graph.nodes.length > 0 ? (["graph"] as const) : []),
+    ...(step.reports && step.reports.length > 0 ? (["reports"] as const) : []),
+  ];
+  const current: PaneKind = tabs.includes(view) ? view : (tabs[0] ?? "text");
 
   useEffect(() => {
     if (forceOpen) setOpen(forceOpen.open);
@@ -90,11 +109,30 @@ export default function StepItem({
             )}
           </p>
           {step.tool_input && <pre className="step-input">{step.tool_input}</pre>}
-          {step.citations && step.citations.length > 0 && (
-            <CitationBreadcrumbs
-              citations={step.citations}
-              onOpen={onOpenCitation}
-            />
+          {tabs.length > 0 && (
+            <>
+              {tabs.length > 1 && (
+                <div className="seg-toggle obs-tabs" role="tablist" aria-label="Kiểu hiển thị kết quả">
+                  {tabs.map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      role="tab"
+                      aria-selected={current === v}
+                      className={`seg-toggle-btn${current === v ? " is-active" : ""}`}
+                      onClick={() => setView(v)}
+                    >
+                      {TAB_LABEL[v]}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {current === "text" && step.citations && (
+                <CitationBreadcrumbs citations={step.citations} onOpen={onOpenCitation} />
+              )}
+              {current === "graph" && step.graph && <ObservationGraphView graph={step.graph} />}
+              {current === "reports" && step.reports && <CommunityReports reports={step.reports} />}
+            </>
           )}
         </div>
       )}

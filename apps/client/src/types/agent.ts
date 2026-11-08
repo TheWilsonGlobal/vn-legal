@@ -20,6 +20,26 @@ export interface Citation {
   score?: number;
 }
 
+/** Articles reached by one search, with the reference links between them. */
+export interface ObservationGraph {
+  nodes: Array<{
+    id: string;
+    number: number;
+    title: string;
+    kind: "vector" | "path";
+    /** Reference hops from the nearest semantic seed (0 = seed). Absent in older records. */
+    depth?: number;
+  }>;
+  edges: Array<{ from: string; to: string }>;
+}
+
+/** A community report shown in the step's synthesis tab. */
+export interface ObservationReport {
+  title: string;
+  summary: string;
+  rating?: number;
+}
+
 export interface AgentStep {
   index: number;
   kind: StepKind;
@@ -29,6 +49,8 @@ export interface AgentStep {
   ok: boolean;
   duration_ms: number;
   citations?: Citation[];
+  graph?: ObservationGraph;
+  reports?: ObservationReport[];
 }
 
 export type ObservabilityStatus = {

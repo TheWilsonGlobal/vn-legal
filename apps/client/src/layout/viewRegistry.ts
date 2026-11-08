@@ -8,7 +8,6 @@ import type { ViewId, ViewProps } from "../types/views";
 export const VIEWS: readonly { id: ViewId; label: string; icon: string }[] = [
   { id: "assistant", label: "Trợ lý", icon: "💬" },
   { id: "sessions", label: "Quản lý phiên", icon: "🗂️" },
-  { id: "knowledge", label: "Khám phá tri thức", icon: "🕸️" },
   { id: "traces", label: "Vết thực thi", icon: "🛡️" },
   { id: "settings", label: "Cài đặt", icon: "⚙️" },
 ];
@@ -19,7 +18,6 @@ export const VIEWS: readonly { id: ViewId; label: string; icon: string }[] = [
  *
  *   src/views/assistant/AssistantView.tsx
  *   src/views/sessions/SessionManagerView.tsx
- *   src/views/knowledge/KnowledgeExplorerView.tsx
  *   src/views/traces/ExecutionTracesView.tsx
  *   src/views/settings/SettingsView.tsx
  *
@@ -29,7 +27,6 @@ export const VIEWS: readonly { id: ViewId; label: string; icon: string }[] = [
 const FILE_FOR_VIEW: Record<ViewId, string> = {
   assistant: "../views/assistant/AssistantView.tsx",
   sessions: "../views/sessions/SessionManagerView.tsx",
-  knowledge: "../views/knowledge/KnowledgeExplorerView.tsx",
   traces: "../views/traces/ExecutionTracesView.tsx",
   settings: "../views/settings/SettingsView.tsx",
 };
@@ -38,7 +35,6 @@ const modules = import.meta.glob<{ default?: unknown }>(
   [
     "../views/assistant/AssistantView.tsx",
     "../views/sessions/SessionManagerView.tsx",
-    "../views/knowledge/KnowledgeExplorerView.tsx",
     "../views/traces/ExecutionTracesView.tsx",
     "../views/settings/SettingsView.tsx",
   ],

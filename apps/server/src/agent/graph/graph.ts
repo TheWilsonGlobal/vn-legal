@@ -15,7 +15,12 @@ import {
   ToolMessage,
 } from "@langchain/core/messages";
 import { tool as lcTool } from "@langchain/core/tools";
-import type { Citation, StepKind } from "../contract";
+import type {
+  Citation,
+  ObservationGraph,
+  ObservationReport,
+  StepKind,
+} from "../contract";
 import type { AgentToolSpec, ToolResult } from "./tools";
 
 export interface EmitPayload {
@@ -26,6 +31,8 @@ export interface EmitPayload {
   ok: boolean;
   duration_ms: number;
   citations?: Citation[];
+  graph?: ObservationGraph;
+  reports?: ObservationReport[];
 }
 
 export type EmitStep = (step: EmitPayload) => void;
@@ -283,6 +290,8 @@ export function buildAgentGraph(opts: BuildGraphOptions) {
         ok: res.ok,
         duration_ms: Date.now() - t0,
         citations: res.citations,
+        ...(res.graph ? { graph: res.graph } : {}),
+        ...(res.shown_reports ? { reports: res.shown_reports } : {}),
       });
       citations.push(...res.citations);
       seeds.push(...res.seeds);

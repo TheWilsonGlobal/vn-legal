@@ -60,8 +60,8 @@ function fakeRetrieval() {
   return {
     queries,
     retrieval: {
-      async retrieve(query: string) {
-        queries.push(query);
+      async retrieve(query: string, mode: string = "local") {
+        queries.push(`${mode}:${query}`);
         return { seed_articles: [seedArticle], community_reports: [] };
       },
     },
@@ -219,7 +219,8 @@ describe("agent run with native tool calling", () => {
       runner.stream(input as any, new AbortController().signal),
     );
 
-    expect(queries).toEqual(["Điều 25"]);
+    // One search runs the local side and the community-report side.
+    expect(queries).toEqual(["local:Điều 25", "global:Điều 25"]);
     const kinds = events
       .filter((e) => e.event === "step")
       .map((e) => e.data.kind);

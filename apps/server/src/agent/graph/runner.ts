@@ -244,6 +244,8 @@ export function createLegalAgentRunner(
         ok: p.ok,
         duration_ms: p.duration_ms,
         ...(p.citations ? { citations: p.citations } : {}),
+        ...(p.graph ? { graph: p.graph } : {}),
+        ...(p.reports ? { reports: p.reports } : {}),
       };
       steps.push(step);
       push({ event: "step", data: step });
@@ -374,6 +376,8 @@ export function createLegalAgentRunner(
             ok: s.ok,
             duration_ms: s.duration_ms,
             citations: s.citations ?? [],
+            graph: s.graph,
+            reports: s.reports,
             content: s.content,
           });
         }
@@ -462,6 +466,8 @@ export function createLegalAgentRunner(
           ok: s.ok,
           duration_ms: s.duration_ms,
           citations: s.citations ?? [],
+          graph: s.graph,
+          reports: s.reports,
           content: s.content,
         });
       }

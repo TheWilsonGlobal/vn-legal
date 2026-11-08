@@ -29,6 +29,26 @@ export interface Citation {
   score?: number;
 }
 
+/** Articles reached by one search, with the reference links between them. */
+export interface ObservationGraph {
+  nodes: Array<{
+    id: string;
+    number: number;
+    title: string;
+    kind: "vector" | "path";
+    /** Reference hops from the nearest semantic seed (0 = seed). Absent in older records. */
+    depth?: number;
+  }>;
+  edges: Array<{ from: string; to: string }>;
+}
+
+/** A community report shown in the step's synthesis tab. */
+export interface ObservationReport {
+  title: string;
+  summary: string;
+  rating?: number;
+}
+
 export interface AgentStep {
   index: number;
   kind: StepKind;
@@ -38,6 +58,8 @@ export interface AgentStep {
   ok: boolean;
   duration_ms: number;
   citations?: Citation[];
+  graph?: ObservationGraph;
+  reports?: ObservationReport[];
 }
 
 /** Filters accepted by C1 and C2 (`filters` in the request body). */
@@ -193,6 +215,8 @@ export type SessionRecord = {
   tool_input?: AgentStep["tool_input"];
   duration_ms?: number;
   citations?: Citation[];
+  graph?: ObservationGraph;
+  reports?: ObservationReport[];
   trace_url?: string | null; // written on `answer` and `error` records
   prev_hash?: string;
   row_hash?: string;

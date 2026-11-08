@@ -199,6 +199,8 @@ function replayStep(s: StoredRecord): AgentStep {
     ok: required(s, "ok", s.ok),
     duration_ms: required(s, "duration_ms", s.duration_ms),
     citations: required(s, "citations", s.citations),
+    ...(s.graph ? { graph: s.graph } : {}),
+    ...(s.reports ? { reports: s.reports } : {}),
   };
 }
 

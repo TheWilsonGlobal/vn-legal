@@ -1,5 +1,10 @@
 import { z } from "zod";
-import type { Citation, StepKind } from "../contract";
+import type {
+  Citation,
+  ObservationGraph,
+  ObservationReport,
+  StepKind,
+} from "../contract";
 
 /** Checked before any path is built. Anything else is refused without touching the disk. */
 export const SESSION_ID_PATTERN = /^[a-f0-9-]{36}$/;
@@ -57,6 +62,42 @@ const citationSchema = z
   })
   .strict();
 
+// Graph tab data for an observation step. Bounded so a record stays small.
+const graphSchema = z
+  .object({
+    nodes: z
+      .array(
+        z
+          .object({
+            id: z.string(),
+            number: z.number().int(),
+            title: z.string().max(300),
+            kind: z.enum(["vector", "path"]),
+            // Optional: graph records written before `depth` existed must still load.
+            depth: z.number().int().min(0).max(10).optional(),
+          })
+          .strict(),
+      )
+      .max(40),
+    edges: z
+      .array(z.object({ from: z.string(), to: z.string() }).strict())
+      .max(120),
+  })
+  .strict();
+
+// Synthesis tab data: community reports shown beside an observation step.
+const reportsSchema = z
+  .array(
+    z
+      .object({
+        title: z.string().max(300),
+        summary: z.string().max(600),
+        rating: z.number().optional(),
+      })
+      .strict(),
+  )
+  .max(10);
+
 const recordBase = z
   .object({
     session_id: z.string().regex(SESSION_ID_PATTERN),
@@ -74,6 +115,8 @@ const recordBase = z
     tool_input: z.string().nullable().optional(),
     duration_ms: z.number().finite().nonnegative().optional(),
     citations: z.array(citationSchema).optional(),
+    graph: graphSchema.optional(),
+    reports: reportsSchema.optional(),
     // Written on answer and error records. Null means the run had no trace.
     trace_url: z.string().nullable().optional(),
   })
@@ -158,6 +201,8 @@ export const appendRecordSchema = recordBase
         `must have at most ${MAX_CITATIONS_PER_STEP} citations`,
       )
       .optional(),
+    graph: graphSchema.optional(),
+    reports: reportsSchema.optional(),
   })
   .superRefine(checkRunFields)
   .superRefine(checkWriteRequired);
@@ -199,6 +244,8 @@ export interface StoredRecord {
   tool_input?: string | null;
   duration_ms?: number;
   citations?: Citation[];
+  graph?: ObservationGraph;
+  reports?: ObservationReport[];
   trace_url?: string | null;
   prev_hash: string;
   row_hash: string;

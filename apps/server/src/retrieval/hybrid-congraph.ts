@@ -273,10 +273,14 @@ export class HybridRetrieval {
 
     // Convert to SeedArticle format
     const seedArticles: SeedArticle[] = [];
+    // Article and clause hits are merged, and two clauses of one article map to
+    // the same article. Keep the first (highest-scoring) hit per article.
+    const seenArticles = new Set<string>();
 
     for (const entity of entities) {
       const article = await this.entityToArticle(entity);
-      if (article) {
+      if (article && !seenArticles.has(article.id)) {
+        seenArticles.add(article.id);
         seedArticles.push({
           article_id: article.id,
           score: (entity.metadata?.score as number) || 1.0,

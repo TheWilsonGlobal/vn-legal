@@ -531,24 +531,6 @@
   overflow-wrap: anywhere;
 }
 
-/* ---------- knowledge explorer ---------- */
-.vw-knowledge {
-  padding: 16px 20px 24px;
-}
-
-.vw-knowledge .top-section {
-  margin-top: 0;
-}
-
-.vw-knowledge .graph-content-wrapper {
-  min-height: 400px;
-}
-
-.vw-knowledge [role="button"]:focus-visible {
-  outline: 2px solid #a5b4fc;
-  outline-offset: 2px;
-}
-
 .vw-detail[hidden] {
   display: none;
 }

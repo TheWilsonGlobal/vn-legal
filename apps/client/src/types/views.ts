@@ -4,7 +4,6 @@ import type { AgentInfo, ConsultContext } from "./agent";
 export type ViewId =
   | "assistant"
   | "sessions"
-  | "knowledge"
   | "traces"
   | "settings";
 
