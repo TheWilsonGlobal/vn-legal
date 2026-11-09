@@ -235,10 +235,10 @@ export const config = {
     iamClientId: env("IAM_CLIENT_ID") || "",
     iamClientSecret: env("IAM_CLIENT_SECRET") || "",
     iamRepoCode: "vn-legal",
-    supabaseUrl: (env("SUPABASE_URL") || "").replace(/\/+$/, ""),
-    supabaseAnonKey: env("SUPABASE_ANON_KEY") || "",
-    // REQUIRE_LOGIN defaults to true, overridable via env REQUIRE_LOGIN (e.g. false in development)
-    requireLogin: env("REQUIRE_LOGIN") !== undefined ? boolEnv("REQUIRE_LOGIN") : true,
+    supabaseUrl: (env("IAM_SUPABASE_URL") || "").replace(/\/+$/, ""),
+    supabaseAnonKey: env("IAM_SUPABASE_ANON_KEY") || "",
+    // REQUIRE_LOGIN defaults to false, overridable via env REQUIRE_LOGIN (set true in production)
+    requireLogin: env("REQUIRE_LOGIN") !== undefined ? boolEnv("REQUIRE_LOGIN") : false,
   },
 };
 
@@ -254,7 +254,7 @@ export function assertIamConfig(): void {
     );
   }
   if (!config.iam.supabaseUrl || !config.iam.supabaseAnonKey) {
-    problems.push("SUPABASE_URL and SUPABASE_ANON_KEY are required");
+    problems.push("IAM_SUPABASE_URL and IAM_SUPABASE_ANON_KEY are required");
   }
   if (problems.length > 0) {
     throw new Error(
