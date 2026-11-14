@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiError,
-  createSession,
   getExamples,
   getSession,
   isAbortError,
-  listSessions,
   streamAgent,
 } from "../../api/agent";
 import type {
   AgentEvent,
   Citation,
-  SessionListItem,
   SessionTurn,
 } from "../../types/agent";
 import type { ViewProps } from "../../types/views";
@@ -20,14 +17,6 @@ import ArticleModal from "./ArticleModal";
 import Composer, { MAX_QUERY } from "./Composer";
 import SuggestionChips, { type ExamplesState } from "./SuggestionChips";
 import TurnView, { type TurnState } from "./TurnView";
-
-const shortId = (id: string) => id.slice(0, 8);
-
-function sessionLabel(s: SessionListItem): string {
-  return `${shortId(s.session_id)} (${s.message_count} tin nhắn, ${
-    s.active ? "đang hoạt động" : "đã lưu"
-  })`;
-}
 
 function errMessage(err: unknown): string {
   if (err instanceof ApiError) {
@@ -48,11 +37,6 @@ function replayTurn(t: SessionTurn): TurnState {
   };
 }
 
-type SessionsState =
-  | { status: "loading" }
-  | { status: "ready"; items: SessionListItem[] }
-  | { status: "error"; message: string };
-
 export default function AssistantView(props: ViewProps) {
   const {
     active,
@@ -71,9 +55,6 @@ export default function AssistantView(props: ViewProps) {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historyAttempt, setHistoryAttempt] = useState(0);
-  const [sessions, setSessions] = useState<SessionsState>({
-    status: "loading",
-  });
   const [examples, setExamples] = useState<ExamplesState>({ status: "idle" });
   const [openCitation, setOpenCitation] = useState<Citation | null>(null);
 
@@ -85,19 +66,10 @@ export default function AssistantView(props: ViewProps) {
   const endRef = useRef<HTMLDivElement | null>(null);
 
   // Latest callbacks for use inside long-lived async code.
-  const cb = useRef({ setSessionId, setLastContext, refreshInfo });
+  const cb = useRef({ setSessionId, setLastContext, refreshInfo, refreshSessions });
   useEffect(() => {
-    cb.current = { setSessionId, setLastContext, refreshInfo };
+    cb.current = { setSessionId, setLastContext, refreshInfo, refreshSessions };
   });
-
-  const loadSessions = useCallback(async () => {
-    try {
-      const res = await listSessions();
-      setSessions({ status: "ready", items: res.sessions });
-    } catch (err) {
-      setSessions({ status: "error", message: errMessage(err) });
-    }
-  }, []);
 
   const loadExamples = useCallback(async () => {
     setExamples({ status: "loading" });
@@ -112,12 +84,12 @@ export default function AssistantView(props: ViewProps) {
   const examplesRequested = useRef(false);
   useEffect(() => {
     if (!active) return;
-    void loadSessions();
+    cb.current.refreshSessions?.();
     if (!examplesRequested.current) {
       examplesRequested.current = true;
       void loadExamples();
     }
-  }, [active, loadSessions, loadExamples]);
+  }, [active, loadExamples]);
 
   // Reload the turns of the selected session (C5). Skipped while a run is in
   // flight: the id may have just been adopted from the `session` event.
@@ -268,10 +240,10 @@ export default function AssistantView(props: ViewProps) {
         abortRef.current = null;
         setStreaming(false);
         cb.current.refreshInfo();
-        void loadSessions();
+        cb.current.refreshSessions?.();
       }
     },
-    [sessionId, handleEvent, patchTurn, loadSessions],
+    [sessionId, handleEvent, patchTurn],
   );
 
   const closeCitation = useCallback(() => setOpenCitation(null), []);
@@ -305,13 +277,6 @@ export default function AssistantView(props: ViewProps) {
     );
   };
 
-  const allQueriesOpen =
-    turns.length > 0 && turns.every((t) => t.queryOpen !== false);
-  const toggleAllQueries = () => {
-    const next = !allQueriesOpen;
-    setTurns((all) => all.map((t) => ({ ...t, queryOpen: next })));
-  };
-
   // Các bước thực thi group: as for the answer, collapsing closes each step's
   // details and keeps the step rows visible.
   const setAllSteps = (open: boolean) => {
@@ -334,18 +299,6 @@ export default function AssistantView(props: ViewProps) {
         sectionsForce: { open, seq: (t.sectionsForce?.seq ?? 0) + 1 },
       })),
     );
-  };
-
-  const newSession = async () => {
-    setPageError(null);
-    try {
-      const created = await createSession();
-      setSessionId(created.session_id);
-      void loadSessions();
-      refreshSessions?.();
-    } catch (err) {
-      setPageError(`Không tạo được phiên mới: ${errMessage(err)}`);
-    }
   };
 
   useEffect(() => {

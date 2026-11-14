@@ -104,9 +104,13 @@ describe("C1 SSE stream", () => {
     const setCookie = String(res.headers["set-cookie"] ?? "");
     expect(setCookie).toMatch(/^vl_owner=[a-f0-9]{32};/);
     expect(setCookie).toMatch(/HttpOnly/);
-    expect(setCookie).toMatch(/SameSite=Strict/);
+    expect(setCookie).toMatch(/SameSite=Lax/);
     expect(setCookie).toMatch(/Path=\//);
-    expect(setCookie).toMatch(/Secure/);
+    if (process.env.NODE_ENV === "production") {
+      expect(setCookie).toMatch(/Secure/);
+    } else {
+      expect(setCookie).not.toMatch(/Secure/);
+    }
   });
 
   it("R2-06: SSE framing holds when token, step and done text contain \\n, \\r and \\u2028", async () => {

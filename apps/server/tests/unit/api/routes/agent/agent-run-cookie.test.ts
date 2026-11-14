@@ -154,15 +154,31 @@ describe("C2 run", () => {
 // ----------------------------------------------------------------------------
 
 describe("vl_owner cookie", () => {
-  it("issues an httpOnly, SameSite=Strict, Path=/, Secure cookie with a 128-bit hex value", async () => {
+  it("issues an httpOnly, SameSite=Lax, Path=/ cookie with a 128-bit hex value (Secure only in production)", async () => {
     const { app } = await harness();
     const res = await app.inject({ method: "GET", url: "/api/agent/sessions" });
     expect(res.statusCode).toBe(200);
     const sc = String(res.headers["set-cookie"]);
     expect(sc).toMatch(/^vl_owner=[a-f0-9]{32};/);
     expect(sc).toMatch(/HttpOnly/i);
-    expect(sc).toMatch(/SameSite=Strict/i);
+    expect(sc).toMatch(/SameSite=Lax/i);
     expect(sc).toMatch(/Path=\//);
+    if (process.env.NODE_ENV === "production") {
+      expect(sc).toMatch(/Secure/);
+    } else {
+      expect(sc).not.toMatch(/Secure/);
+    }
+  });
+
+  it("applyOwnerCookie with secure:true sets the Secure flag", async () => {
+    const app = Fastify({ logger: false });
+    apps.push(app);
+    await app.register(fastifyCookie);
+    applyOwnerCookie(app, { secure: true });
+    app.get("/whoami", async (request) => ({ owner: request.owner }));
+    await app.ready();
+    const res = await app.inject({ method: "GET", url: "/whoami" });
+    const sc = String(res.headers["set-cookie"]);
     expect(sc).toMatch(/Secure/);
   });
 
@@ -219,7 +235,7 @@ describe("vl_owner cookie", () => {
     const res = await app.inject({ method: "GET", url: "/whoami" });
     const sc = String(res.headers["set-cookie"]);
     expect(sc).toMatch(/HttpOnly/i);
-    expect(sc).toMatch(/SameSite=Strict/i);
+    expect(sc).toMatch(/SameSite=Lax/i);
     expect(sc).not.toMatch(/Secure/);
     expect(res.json().owner).toMatch(/^[a-f0-9]{32}$/);
   });

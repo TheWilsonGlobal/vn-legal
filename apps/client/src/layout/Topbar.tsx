@@ -34,8 +34,6 @@ interface TopbarProps {
 
 export function Topbar({
   activeView,
-  info: _info,
-  onRetryInfo: _onRetryInfo,
   user,
   onAuthRefresh,
   sessionId,

@@ -467,6 +467,9 @@ export async function agentRoutes(
         toInput(parsed.data, session, request.owner),
         abort.signal,
       )) {
+        if (ev.event === "session") {
+          continue;
+        }
         await writeEvent(raw, ev);
         if (ev.event === "done" || ev.event === "error") {
           terminal = true;
