@@ -91,7 +91,7 @@ describe("PathRAG", () => {
   describe("findPath", () => {
     it("should find shortest path", async () => {
       mockGraph.getOutgoingEdges.mockImplementation(
-        (id: string, type: string) => {
+        (id: string, _type: string) => {
           if (id === "a1") return [{ to: "a2" }];
           if (id === "a2") return [{ to: "a3" }];
           return [];
@@ -104,7 +104,7 @@ describe("PathRAG", () => {
 
     it("should use incoming edges for backward search", async () => {
       mockGraph.getIncomingEdges.mockImplementation(
-        (id: string, type: string) => {
+        (id: string, _type: string) => {
           if (id === "a2") return [{ from: "a1" }];
           return [];
         },

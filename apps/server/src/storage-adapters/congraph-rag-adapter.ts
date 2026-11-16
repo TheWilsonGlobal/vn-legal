@@ -531,7 +531,7 @@ export class ConGraphStorageAdapter implements IStorage {
 
   async getNeighbors(
     id: string,
-    hops: number,
+    _hops: number,
   ): Promise<{ entities: Entity[]; relations: Relationship[] }> {
     const entities: Entity[] = [];
     const relations: Relationship[] = [];
@@ -561,8 +561,8 @@ export class ConGraphStorageAdapter implements IStorage {
   }
 
   async searchRelationships(
-    query: string,
-    limit: number,
+    _query: string,
+    _limit: number,
   ): Promise<Relationship[]> {
     logger.warn(
       `searchRelationships not fully implemented, returning empty array`,
@@ -571,8 +571,8 @@ export class ConGraphStorageAdapter implements IStorage {
   }
 
   async searchRelationshipsByEmbedding(
-    embedding: number[],
-    limit: number,
+    _embedding: number[],
+    _limit: number,
   ): Promise<Relationship[]> {
     logger.warn(
       `searchRelationshipsByEmbedding not fully implemented, returning empty array`,
@@ -582,7 +582,7 @@ export class ConGraphStorageAdapter implements IStorage {
 
   async getHierarchicalParent(
     childId: string,
-    type: "community" | "entity",
+    _type: "community" | "entity",
   ): Promise<string | null> {
     try {
       const incomingEdges = await this.graph.getIncomingEdges(childId);
@@ -650,9 +650,9 @@ export class ConGraphStorageAdapter implements IStorage {
   }
 
   async runPageRank(
-    seedNodes?: string[],
-    dampingFactor?: number,
-    maxIterations?: number,
+    _seedNodes?: string[],
+    _dampingFactor?: number,
+    _maxIterations?: number,
   ): Promise<Map<string, number>> {
     logger.warn(`runPageRank not fully implemented, returning empty map`);
     return new Map();

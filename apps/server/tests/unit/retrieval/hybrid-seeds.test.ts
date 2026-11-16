@@ -5,8 +5,20 @@ import { createHybridRetrieval } from "../../../src/retrieval/hybrid-congraph";
 
 function storageWith(entities: any[]) {
   const articles: Record<string, any> = {
-    article_21: { id: "article_21", article_number: 21, title: "Người chưa thành niên", content: "…", metadata: {} },
-    article_25: { id: "article_25", article_number: 25, title: "Quyền nhân thân", content: "…", metadata: {} },
+    article_21: {
+      id: "article_21",
+      article_number: 21,
+      title: "Người chưa thành niên",
+      content: "…",
+      metadata: {},
+    },
+    article_25: {
+      id: "article_25",
+      article_number: 25,
+      title: "Quyền nhân thân",
+      content: "…",
+      metadata: {},
+    },
   };
   return {
     searchEntitiesByEmbedding: async () => entities,
@@ -30,7 +42,10 @@ describe("findSeedArticles", () => {
     );
     // Explicit limit: the default reads config, which this unit test does not load.
     const seeds = await r.findSeedArticles("q", 10);
-    expect(seeds.map((s) => s.article_id)).toEqual(["article_21", "article_25"]);
+    expect(seeds.map((s) => s.article_id)).toEqual([
+      "article_21",
+      "article_25",
+    ]);
     expect(seeds[0].score).toBe(0.78);
   });
 });

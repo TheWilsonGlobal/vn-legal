@@ -91,13 +91,15 @@ export default function SettingsView(props: ViewProps) {
     getMemoryStats(signal),
   );
 
-  const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
-    llm: true,
-    embedding: true,
-    langfuse: true,
-    memory: true,
-    tools: true,
-  });
+  const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>(
+    {
+      llm: true,
+      embedding: true,
+      langfuse: true,
+      memory: true,
+      tools: true,
+    },
+  );
 
   const toggleSection = (key: SectionKey) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -153,7 +155,9 @@ export default function SettingsView(props: ViewProps) {
             type="button"
             className="vw-btn small"
             onClick={allOpen ? collapseAll : expandAll}
-            title={allOpen ? "Thu gọn tất cả các phần" : "Mở rộng tất cả các phần"}
+            title={
+              allOpen ? "Thu gọn tất cả các phần" : "Mở rộng tất cả các phần"
+            }
           >
             <span aria-hidden="true">{allOpen ? "▸▸ " : "▾▾ "}</span>
             {allOpen ? "Thu gọn tất cả" : "Mở rộng tất cả"}
@@ -281,7 +285,8 @@ export default function SettingsView(props: ViewProps) {
                 Danh sách công cụ tác tử ({AGENT_TOOLS.length} công cụ)
               </h3>
               <span className="muted" style={{ fontSize: "12px" }}>
-                Chế độ gọi: {info.info.tool_mode} · Tối đa {info.info.max_steps} bước
+                Chế độ gọi: {info.info.tool_mode} · Tối đa {info.info.max_steps}{" "}
+                bước
               </span>
             </button>
             {openSections.tools && (
@@ -292,7 +297,9 @@ export default function SettingsView(props: ViewProps) {
                       <div className="vw-tool-head">
                         <div className="vw-tool-title-group">
                           <span className="vw-tool-name">{t.name}</span>
-                          <code className="vw-tool-func mono">{t.funcName}</code>
+                          <code className="vw-tool-func mono">
+                            {t.funcName}
+                          </code>
                         </div>
                         <span className={`vw-tool-badge ${t.badge}`}>
                           {t.type}
@@ -417,11 +424,13 @@ export default function SettingsView(props: ViewProps) {
                 </dd>
                 <dt>Lượt trong bộ nhớ ngắn hạn</dt>
                 <dd>
-                  {m.data.short_term.turns} (tối đa {m.data.short_term.max_turns})
+                  {m.data.short_term.turns} (tối đa{" "}
+                  {m.data.short_term.max_turns})
                 </dd>
                 <dt>Token trong bộ nhớ ngắn hạn</dt>
                 <dd>
-                  {m.data.short_term.tokens} (tối đa {m.data.short_term.max_tokens})
+                  {m.data.short_term.tokens} (tối đa{" "}
+                  {m.data.short_term.max_tokens})
                 </dd>
                 <dt>TTL phiên</dt>
                 <dd>{m.data.short_term.ttl_s} giây</dd>

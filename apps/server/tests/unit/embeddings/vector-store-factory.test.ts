@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { createVectorStore } from "../../../src/embeddings/vector-store-factory";
 import { config } from "../../../src/shared/config";
 import * as lancedbModule from "../../../src/embeddings/lancedb";

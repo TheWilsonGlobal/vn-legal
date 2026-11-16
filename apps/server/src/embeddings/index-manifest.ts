@@ -138,7 +138,11 @@ export function describeEmbedder(cfg: EmbeddingConfig): EmbedderDescription {
  */
 export function assertServerEmbeddingConfig(cfg: EmbeddingConfig): void {
   const provider = cfg.embedding.provider;
-  if (provider !== "gemini" && provider !== "jina" && provider !== "transformers") {
+  if (
+    provider !== "gemini" &&
+    provider !== "jina" &&
+    provider !== "transformers"
+  ) {
     throw new Error(
       'EMBEDDING_PROVIDER must be "gemini" or "jina" (or "transformers" for the documented rollback); it is unset or not a supported value',
     );

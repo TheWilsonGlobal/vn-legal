@@ -7,7 +7,6 @@ import {
   getHierarchicalContext,
   agentTools,
 } from "../../../src/agent/tools";
-import { LegalContextBundle } from "../../../src/shared/types";
 
 describe("Agent Tools", () => {
   describe("retrieveLegalContext", () => {

@@ -74,7 +74,8 @@ function withEmbeddingFailureRecording<T extends object>(embedder: T): T {
           try {
             return await (target as any).embed(text);
           } catch (err) {
-            agentEmbedding.failed = err instanceof Error ? err.message : String(err);
+            agentEmbedding.failed =
+              err instanceof Error ? err.message : String(err);
             throw err;
           }
         };
@@ -330,7 +331,9 @@ export async function createServer(options: ServerOptions) {
       retrieval: {
         retrieve: async (query, mode, filters) => {
           agentEmbedding.failed = undefined;
-          const ctx = await options.agent.getRetrieval().retrieve(query, mode, filters);
+          const ctx = await options.agent
+            .getRetrieval()
+            .retrieve(query, mode, filters);
           if (agentEmbedding.failed !== undefined) {
             throw new EmbeddingFailure(agentEmbedding.failed);
           }

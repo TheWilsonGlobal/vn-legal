@@ -86,11 +86,11 @@ describe("admin read across owners (listAll / recordsAll)", () => {
   it("rejects a bad page window", async () => {
     const store = makeStore(dir);
     await store.load();
-    await expect(
-      store.recordsAll({ offset: -1, limit: 10 }),
-    ).rejects.toThrow(TypeError);
-    await expect(
-      store.recordsAll({ offset: 0, limit: 0 }),
-    ).rejects.toThrow(TypeError);
+    await expect(store.recordsAll({ offset: -1, limit: 10 })).rejects.toThrow(
+      TypeError,
+    );
+    await expect(store.recordsAll({ offset: 0, limit: 0 })).rejects.toThrow(
+      TypeError,
+    );
   });
 });

@@ -1,9 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
-import {
-  ResponseFormatter,
-  createResponseFormatter,
-} from "../../../src/agent/formatter";
-import { LegalContextBundle } from "../../../src/shared/types";
+import { describe, it, expect } from "vitest";
+import { createResponseFormatter } from "../../../src/agent/formatter";
 
 describe("ResponseFormatter", () => {
   const formatter = createResponseFormatter();

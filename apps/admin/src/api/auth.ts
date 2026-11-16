@@ -20,7 +20,9 @@ function isOwnApiUrl(raw: string, apiOrigin: string): boolean {
   }
 }
 
-export function installAuthFetch(getApiUrl: (path: string) => string = (p) => p): void {
+export function installAuthFetch(
+  getApiUrl: (path: string) => string = (p) => p,
+): void {
   const w = window as unknown as { __authFetchInstalled?: boolean };
   if (w.__authFetchInstalled) return;
   w.__authFetchInstalled = true;

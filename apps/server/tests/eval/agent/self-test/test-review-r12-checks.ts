@@ -150,7 +150,10 @@ export function runReviewR12ChecksTests(ctx: TestContext) {
     );
     const badObs = sc1(fr("FR2"), [
       ok(
-        [act("recall_session", '{"key":"k"}'), obs("[query] một câu hỏi nào đó")],
+        [
+          act("recall_session", '{"key":"k"}'),
+          obs("[query] một câu hỏi nào đó"),
+        ],
         "Chưa có câu hỏi nào.",
       ),
     ]);
@@ -201,9 +204,18 @@ export function runReviewR12ChecksTests(ctx: TestContext) {
         summary,
       }),
     );
-    const okLoad = loadBl2(path, { index_id: "idx-A", dataset_sha256: "sha-A" });
-    const badIdx = loadBl2(path, { index_id: "idx-B", dataset_sha256: "sha-A" });
-    const badSha = loadBl2(path, { index_id: "idx-A", dataset_sha256: "sha-B" });
+    const okLoad = loadBl2(path, {
+      index_id: "idx-A",
+      dataset_sha256: "sha-A",
+    });
+    const badIdx = loadBl2(path, {
+      index_id: "idx-B",
+      dataset_sha256: "sha-A",
+    });
+    const badSha = loadBl2(path, {
+      index_id: "idx-A",
+      dataset_sha256: "sha-B",
+    });
     check(
       "R12-04 BL2: matching index_id and dataset sha load; another index or dataset is refused with the reason (old code: loaded both)",
       okLoad.summary !== null &&

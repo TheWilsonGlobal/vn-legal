@@ -6,11 +6,7 @@ import {
   isAbortError,
   streamAgent,
 } from "../../api/agent";
-import type {
-  AgentEvent,
-  Citation,
-  SessionTurn,
-} from "../../types/agent";
+import type { AgentEvent, Citation, SessionTurn } from "../../types/agent";
 import type { ViewProps } from "../../types/views";
 import "../../styles/assistant.css";
 import ArticleModal from "./ArticleModal";
@@ -66,7 +62,12 @@ export default function AssistantView(props: ViewProps) {
   const endRef = useRef<HTMLDivElement | null>(null);
 
   // Latest callbacks for use inside long-lived async code.
-  const cb = useRef({ setSessionId, setLastContext, refreshInfo, refreshSessions });
+  const cb = useRef({
+    setSessionId,
+    setLastContext,
+    refreshInfo,
+    refreshSessions,
+  });
   useEffect(() => {
     cb.current = { setSessionId, setLastContext, refreshInfo, refreshSessions };
   });
@@ -162,7 +163,7 @@ export default function AssistantView(props: ViewProps) {
           break;
         case "done":
           cb.current.setLastContext(ev.data.context);
-          refreshSessions?.();
+          cb.current.refreshSessions?.();
           patchTurn(key, (t) => ({
             ...t,
             answer: ev.data.answer,
@@ -255,9 +256,12 @@ export default function AssistantView(props: ViewProps) {
       setTurns((all) =>
         all.map((t) => {
           if (t.key !== key) return t;
-          if (section === "query") return { ...t, queryOpen: !(t.queryOpen ?? true) };
-          if (section === "steps") return { ...t, stepsOpen: !(t.stepsOpen ?? true) };
-          if (section === "answer") return { ...t, answerOpen: !(t.answerOpen ?? true) };
+          if (section === "query")
+            return { ...t, queryOpen: !(t.queryOpen ?? true) };
+          if (section === "steps")
+            return { ...t, stepsOpen: !(t.stepsOpen ?? true) };
+          if (section === "answer")
+            return { ...t, answerOpen: !(t.answerOpen ?? true) };
           return t;
         }),
       );
@@ -267,13 +271,23 @@ export default function AssistantView(props: ViewProps) {
 
   const expandAll = () => {
     setTurns((all) =>
-      all.map((t) => ({ ...t, queryOpen: true, stepsOpen: true, answerOpen: true })),
+      all.map((t) => ({
+        ...t,
+        queryOpen: true,
+        stepsOpen: true,
+        answerOpen: true,
+      })),
     );
   };
 
   const collapseAll = () => {
     setTurns((all) =>
-      all.map((t) => ({ ...t, queryOpen: false, stepsOpen: false, answerOpen: false })),
+      all.map((t) => ({
+        ...t,
+        queryOpen: false,
+        stepsOpen: false,
+        answerOpen: false,
+      })),
     );
   };
 

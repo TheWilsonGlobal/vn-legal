@@ -78,8 +78,16 @@ const EMBEDDING_DIM = intEnv("EMBEDDING_DIM", 768);
 // fallbacks (used only on quota or rejection, see key-rotation.ts).
 const EMBEDDING_KEY_VARS =
   EMBEDDING_PROVIDER === "jina"
-    ? ["JINA_EMBEDDING_API_KEY", "JINA_EMBEDDING_API_KEY_2", "JINA_EMBEDDING_API_KEY_3"]
-    : ["GEMINI_EMBEDDING_API_KEY", "GEMINI_EMBEDDING_API_KEY_2", "GEMINI_EMBEDDING_API_KEY_3"];
+    ? [
+        "JINA_EMBEDDING_API_KEY",
+        "JINA_EMBEDDING_API_KEY_2",
+        "JINA_EMBEDDING_API_KEY_3",
+      ]
+    : [
+        "GEMINI_EMBEDDING_API_KEY",
+        "GEMINI_EMBEDDING_API_KEY_2",
+        "GEMINI_EMBEDDING_API_KEY_3",
+      ];
 
 export const config = {
   // Database paths
@@ -248,7 +256,8 @@ export const config = {
     supabaseUrl: (env("IAM_SUPABASE_URL") || "").replace(/\/+$/, ""),
     supabaseAnonKey: env("IAM_SUPABASE_ANON_KEY") || "",
     // REQUIRE_LOGIN defaults to false, overridable via env REQUIRE_LOGIN (set true in production)
-    requireLogin: env("REQUIRE_LOGIN") !== undefined ? boolEnv("REQUIRE_LOGIN") : false,
+    requireLogin:
+      env("REQUIRE_LOGIN") !== undefined ? boolEnv("REQUIRE_LOGIN") : false,
   },
 };
 

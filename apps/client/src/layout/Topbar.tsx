@@ -70,8 +70,15 @@ export function Topbar({
         <h2 className="workbench-topbar-title">{title}</h2>
 
         {/* Session selector + New button + Session ID display in header */}
-        <div className="topbar-session-bar" role="toolbar" aria-label="Quản lý phiên">
-          <label htmlFor="topbar-session-select" className="topbar-session-label">
+        <div
+          className="topbar-session-bar"
+          role="toolbar"
+          aria-label="Quản lý phiên"
+        >
+          <label
+            htmlFor="topbar-session-select"
+            className="topbar-session-label"
+          >
             Phiên
           </label>
           <select

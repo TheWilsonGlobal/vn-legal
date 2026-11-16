@@ -20,7 +20,7 @@ vi.mock("../../../src/shared/error-handling", () => ({
   validateQuery: vi.fn((q: string) => q && q.length > 0),
   logPerformance: vi.fn(),
   recordMetric: vi.fn(),
-  safeGraphOperation: vi.fn((name: string, fn: any, fallback: any) => fn()),
+  safeGraphOperation: vi.fn((name: string, fn: any, _fallback: any) => fn()),
 }));
 
 // Mock config

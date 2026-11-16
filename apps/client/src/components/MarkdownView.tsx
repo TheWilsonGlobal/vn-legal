@@ -1,4 +1,5 @@
 import { useState, useId, useEffect, type ReactNode } from "react";
+import { checkSectionHeader } from "./markdown-sections";
 
 /** A group action from the parent: open or close every response section. */
 export interface SectionsForce {
@@ -25,10 +26,7 @@ function renderBoldText(text: string): ReactNode[] {
         (italicPart.startsWith("*") && italicPart.endsWith("*"))
       ) {
         return (
-          <em
-            key={`i-${i}-${j}`}
-            style={{ fontStyle: "italic", opacity: 0.9 }}
-          >
+          <em key={`i-${i}-${j}`} style={{ fontStyle: "italic", opacity: 0.9 }}>
             {italicPart.slice(1, -1)}
           </em>
         );
@@ -36,41 +34,6 @@ function renderBoldText(text: string): ReactNode[] {
       return italicPart;
     });
   });
-}
-
-/** Check if a line is a section heading in the legal response. */
-function checkSectionHeader(line: string): {
-  isHeader: boolean;
-  title: string;
-} {
-  const trimmed = line.trim();
-  if (!trimmed || trimmed.match(/^[-*_]{3,}$/) || trimmed.startsWith("```")) {
-    return { isHeader: false, title: "" };
-  }
-
-  // Markdown headings (###, ##, #)
-  const hMatch = trimmed.match(/^#{1,4}\s+(.+)$/);
-  if (hMatch) {
-    return { isHeader: true, title: hMatch[1] };
-  }
-
-  // Numbered sections: "1. Pháp luật áp dụng", "2. Điều kiện có hiệu lực", etc.
-  const numMatch = trimmed.match(
-    /^(\d+)\.\s+(\*\*[^*]+\*\*|[A-ZÀ-Ỹ0-9][^:.\n]{2,80}:?)$/u,
-  );
-  if (numMatch) {
-    return { isHeader: true, title: trimmed };
-  }
-
-  // Bold section labels: "**1. Pháp luật áp dụng**"
-  const boldMatch = trimmed.match(
-    /^\*\*(\d+\.\s+[^:*]+|Phần\s+[^:*]+|Chương\s+[^:*]+|Điều\s+[^:*]+)\*\*:?$/iu,
-  );
-  if (boldMatch) {
-    return { isHeader: true, title: boldMatch[1] };
-  }
-
-  return { isHeader: false, title: "" };
 }
 
 /** Renders an array of text lines as clean, space-optimized block elements. */
@@ -133,11 +96,6 @@ function cleanLines(lines: string[]): string[] {
     end--;
   }
   return filtered.slice(start, end);
-}
-
-/** Number of response sections (headings) in the text, as MarkdownView shows them. */
-export function countResponseSections(text: string): number {
-  return text.split("\n").filter((line) => checkSectionHeader(line).isHeader).length;
 }
 
 interface SectionItem {

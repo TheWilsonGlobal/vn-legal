@@ -1,11 +1,7 @@
 import type { AgentInfo, ConsultContext } from "./agent";
 
 /** Ids of the five workbench views; also the folder name under src/views/. */
-export type ViewId =
-  | "assistant"
-  | "sessions"
-  | "traces"
-  | "settings";
+export type ViewId = "assistant" | "sessions" | "traces" | "settings";
 
 /** State of the C9 request, shared by the topbar, sidebar and Settings view. */
 export type InfoState =

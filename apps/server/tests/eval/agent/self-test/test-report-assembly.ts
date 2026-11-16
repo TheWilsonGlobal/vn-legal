@@ -83,7 +83,9 @@ export function runReportAssemblyTests(ctx: TestContext) {
     mockReport.kpis.length === 11 &&
       mockReport.kpis.every(
         (k) =>
-          k.status === "NOT MEASURED" && k.observed === null && k.mode === "mock",
+          k.status === "NOT MEASURED" &&
+          k.observed === null &&
+          k.mode === "mock",
       ),
   );
   const md = toMarkdown(mockReport);

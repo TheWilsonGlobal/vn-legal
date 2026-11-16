@@ -3,12 +3,8 @@ import { mkdir, readFile } from "node:fs/promises";
 import { config } from "../../shared/config";
 import { parseLegalFile } from "../../graph/parser";
 import type { ArticleClause, ArticleNode } from "../../shared/types";
-import {
-  type GeminiDocument,
-} from "../../embeddings/embedder-gemini";
-import {
-  GEMINI_DOC_PREFIX,
-} from "../../embeddings/index-manifest";
+import { type GeminiDocument } from "../../embeddings/embedder-gemini";
+import { GEMINI_DOC_PREFIX } from "../../embeddings/index-manifest";
 import {
   COMMUNITY_EXPORT,
   DATA_DIR,
@@ -33,7 +29,11 @@ export function reportContent(report: ReportRow): string {
   return `${report.summary}\n${report.findings}`;
 }
 
-export function documentNode(id: string, title: string, content: string): ArticleNode {
+export function documentNode(
+  id: string,
+  title: string,
+  content: string,
+): ArticleNode {
   return {
     id,
     article_number: 0,
@@ -47,7 +47,10 @@ export function documentNode(id: string, title: string, content: string): Articl
   };
 }
 
-export function buildDocs(articles: ArticleNode[], reports: ReportRow[]): Doc[] {
+export function buildDocs(
+  articles: ArticleNode[],
+  reports: ReportRow[],
+): Doc[] {
   const docs: Doc[] = [];
   for (const article of articles) {
     docs.push({ kind: "article", id: article.id, article });
@@ -92,7 +95,9 @@ export function sortReports(rows: ReportRow[]): ReportRow[] {
   );
 }
 
-export async function exportCommunityReports(copyStore: string): Promise<ReportRow[]> {
+export async function exportCommunityReports(
+  copyStore: string,
+): Promise<ReportRow[]> {
   return withOldCopy(copyStore, async (store) => {
     const result = await store.connection.query(
       "MATCH (r:community_reports) RETURN r.id AS id, r.level AS level, " +

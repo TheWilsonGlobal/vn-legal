@@ -154,7 +154,10 @@ function llmCallDetail(p: {
       content: text,
     };
     if (m.tool_calls && m.tool_calls.length > 0) {
-      entry.tool_calls = m.tool_calls.map((c) => ({ name: c.name, args: c.args }));
+      entry.tool_calls = m.tool_calls.map((c) => ({
+        name: c.name,
+        args: c.args,
+      }));
     }
     if (m.tool_call_id) entry.tool_call_id = m.tool_call_id;
     if (m.name) entry.name = m.name;
@@ -173,7 +176,10 @@ function llmCallDetail(p: {
     messages,
     response: {
       text: fullText(p.ai.content),
-      tool_calls: (p.ai.tool_calls ?? []).map((c) => ({ name: c.name, args: c.args })),
+      tool_calls: (p.ai.tool_calls ?? []).map((c) => ({
+        name: c.name,
+        args: c.args,
+      })),
     },
     usage: meta
       ? { input: meta.input_tokens ?? 0, output: meta.output_tokens ?? 0 }
@@ -210,7 +216,16 @@ function wrapToolOutput(name: string, ok: boolean, content: string): string {
 }
 
 export function buildAgentGraph(opts: BuildGraphOptions) {
-  const { model, tools, maxSteps, emit, callbacks, signal, modelName, onModelCall } = opts;
+  const {
+    model,
+    tools,
+    maxSteps,
+    emit,
+    callbacks,
+    signal,
+    modelName,
+    onModelCall,
+  } = opts;
   let llmCalls = 0;
   const byName = new Map(tools.map((t) => [t.name, t]));
   const lcTools = tools.map((t) =>

@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { JinaEmbedder, JINA_API_URL } from "../../../../src/embeddings/embedder-jina";
-import { isQuotaError, withKeyRotation } from "../../../../src/embeddings/key-rotation";
+import {
+  JinaEmbedder,
+  JINA_API_URL,
+} from "../../../../src/embeddings/embedder-jina";
+import {
+  isQuotaError,
+  withKeyRotation,
+} from "../../../../src/embeddings/key-rotation";
 
 const DIM = 4;
 const SECRET = "jina_test_secret_key";
@@ -11,7 +17,11 @@ function vector(seed: number): number[] {
   return v.map((x) => x / norm);
 }
 
-function jsonResponse(body: unknown, status = 200, headers: Record<string, string> = {}) {
+function jsonResponse(
+  body: unknown,
+  status = 200,
+  headers: Record<string, string> = {},
+) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json", ...headers },
@@ -26,7 +36,10 @@ interface Call {
 
 function fakeFetch(responses: Array<() => Response>) {
   const calls: Call[] = [];
-  const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
+  const fetchImpl = (async (
+    url: string | URL | Request,
+    init?: RequestInit,
+  ) => {
     calls.push({
       url: String(url),
       init: init ?? {},
@@ -39,7 +52,10 @@ function fakeFetch(responses: Array<() => Response>) {
   return { fetchImpl, calls };
 }
 
-function embedder(fetchImpl: typeof fetch, extra: Partial<ConstructorParameters<typeof JinaEmbedder>[0]> = {}) {
+function embedder(
+  fetchImpl: typeof fetch,
+  extra: Partial<ConstructorParameters<typeof JinaEmbedder>[0]> = {},
+) {
   const sleeps: number[] = [];
   const e = new JinaEmbedder({
     apiKey: SECRET,
@@ -79,7 +95,9 @@ describe("JinaEmbedder request shape", () => {
 
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe(JINA_API_URL);
-    expect((calls[0].init.headers as Record<string, string>).Authorization).toBe(`Bearer ${SECRET}`);
+    expect(
+      (calls[0].init.headers as Record<string, string>).Authorization,
+    ).toBe(`Bearer ${SECRET}`);
     expect(calls[0].body).toMatchObject({
       model: "jina-embeddings-v3",
       task: "retrieval.passage",
@@ -97,7 +115,11 @@ describe("JinaEmbedder request shape", () => {
 
   it("the query path uses retrieval.query and sends the raw query text", async () => {
     const { fetchImpl, calls } = fakeFetch([
-      () => jsonResponse({ data: [{ index: 0, embedding: vector(0) }], usage: { total_tokens: 5 } }),
+      () =>
+        jsonResponse({
+          data: [{ index: 0, embedding: vector(0) }],
+          usage: { total_tokens: 5 },
+        }),
     ]);
     const { e } = embedder(fetchImpl);
     await e.initialize();
@@ -111,7 +133,13 @@ describe("JinaEmbedder request shape", () => {
 
   it("splits inputs into batches of batchSize, one request each", async () => {
     const { fetchImpl, calls } = fakeFetch([
-      () => jsonResponse({ data: [{ index: 0, embedding: vector(0) }, { index: 1, embedding: vector(1) }] }),
+      () =>
+        jsonResponse({
+          data: [
+            { index: 0, embedding: vector(0) },
+            { index: 1, embedding: vector(1) },
+          ],
+        }),
       () => jsonResponse({ data: [{ index: 0, embedding: vector(2) }] }),
     ]);
     const { e } = embedder(fetchImpl, { batchSize: 2 });
@@ -131,12 +159,17 @@ describe("JinaEmbedder request shape", () => {
 describe("JinaEmbedder failures", () => {
   it("a 401 throws at once with httpStatus 401 and never includes the key", async () => {
     const { fetchImpl, calls } = fakeFetch([
-      () => new Response(JSON.stringify({ detail: `bad key ${SECRET}` }), { status: 401 }),
+      () =>
+        new Response(JSON.stringify({ detail: `bad key ${SECRET}` }), {
+          status: 401,
+        }),
     ]);
     const { e } = embedder(fetchImpl);
     await e.initialize();
 
-    const err = await e.embed("q").catch((x: unknown) => x as Error & { httpStatus?: number });
+    const err = await e
+      .embed("q")
+      .catch((x: unknown) => x as Error & { httpStatus?: number });
 
     expect(calls).toHaveLength(1);
     expect((err as { httpStatus?: number }).httpStatus).toBe(401);
@@ -147,7 +180,8 @@ describe("JinaEmbedder failures", () => {
 
   it("a 429 is retried after Retry-After, then succeeds", async () => {
     const { fetchImpl, calls } = fakeFetch([
-      () => new Response("{}", { status: 429, headers: { "retry-after": "1" } }),
+      () =>
+        new Response("{}", { status: 429, headers: { "retry-after": "1" } }),
       () => jsonResponse({ data: [{ index: 0, embedding: vector(0) }] }),
     ]);
     const { e, sleeps } = embedder(fetchImpl);
@@ -160,7 +194,9 @@ describe("JinaEmbedder failures", () => {
   });
 
   it("a 402 (insufficient balance) is a quota error for key rotation", async () => {
-    const { fetchImpl } = fakeFetch([() => new Response("{}", { status: 402 })]);
+    const { fetchImpl } = fakeFetch([
+      () => new Response("{}", { status: 402 }),
+    ]);
     const { e } = embedder(fetchImpl);
     await e.initialize();
 
@@ -171,12 +207,16 @@ describe("JinaEmbedder failures", () => {
   });
 
   it("rejects a zero vector and a wrong-length vector", async () => {
-    const zero = fakeFetch([() => jsonResponse({ data: [{ index: 0, embedding: [0, 0, 0, 0] }] })]);
+    const zero = fakeFetch([
+      () => jsonResponse({ data: [{ index: 0, embedding: [0, 0, 0, 0] }] }),
+    ]);
     const a = embedder(zero.fetchImpl);
     await a.e.initialize();
     await expect(a.e.embed("q")).rejects.toThrow(/zero vector/);
 
-    const short = fakeFetch([() => jsonResponse({ data: [{ index: 0, embedding: [1, 2] }] })]);
+    const short = fakeFetch([
+      () => jsonResponse({ data: [{ index: 0, embedding: [1, 2] }] }),
+    ]);
     const b = embedder(short.fetchImpl);
     await b.e.initialize();
     await expect(b.e.embed("q")).rejects.toThrow(/expected 4/);
@@ -200,7 +240,13 @@ describe("key rotation over Jina embedders", () => {
     ]);
     const primary = embedder(quota.fetchImpl, { sleep: async () => {} });
     await primary.e.initialize();
-    const ok = fakeFetch([() => jsonResponse({ data: [{ index: 0, embedding: vector(0) }], usage: { total_tokens: 7 } })]);
+    const ok = fakeFetch([
+      () =>
+        jsonResponse({
+          data: [{ index: 0, embedding: vector(0) }],
+          usage: { total_tokens: 7 },
+        }),
+    ]);
     const fallback = embedder(ok.fetchImpl);
     await fallback.e.initialize();
 

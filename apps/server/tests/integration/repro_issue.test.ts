@@ -22,7 +22,7 @@ describe("ConGraphDB Metadata Issue Reproduction", () => {
       // For ConGraphDB, we might need to delete the whole directory or file
       try {
         fs.unlinkSync(testDbPath);
-      } catch (_e) {
+      } catch {
         // Ignore error if directory exists
       }
     }

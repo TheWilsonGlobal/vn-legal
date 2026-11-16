@@ -43,7 +43,11 @@ class JinaHttpError extends Error {
   readonly retryAfterMs: number | undefined;
   readonly detail: string | undefined;
 
-  constructor(status: number, retryAfterMs: number | undefined, detail?: string) {
+  constructor(
+    status: number,
+    retryAfterMs: number | undefined,
+    detail?: string,
+  ) {
     super(`HTTP ${status}`);
     this.name = "JinaHttpError";
     this.status = status;
@@ -329,10 +333,11 @@ export class JinaEmbedder implements IEmbedder {
 
     const out: number[][] = new Array(chunk.length);
     data.forEach((item, position) => {
-      const index =
-        typeof item.index === "number" ? item.index : position;
+      const index = typeof item.index === "number" ? item.index : position;
       if (!Number.isInteger(index) || index < 0 || index >= chunk.length) {
-        throw new EmbeddingError(`Jina returned an out-of-range index ${index}`);
+        throw new EmbeddingError(
+          `Jina returned an out-of-range index ${index}`,
+        );
       }
       out[index] = validateVector(item.embedding, chunk[index].id, this.dim);
     });
@@ -368,7 +373,10 @@ export class JinaEmbedder implements IEmbedder {
    * connection-level errors retry at most MAX_RETRIES times, honouring
    * Retry-After, within RETRY_BUDGET_MS. Every other error throws at once.
    */
-  private async withRetry<T>(label: string, call: () => Promise<T>): Promise<T> {
+  private async withRetry<T>(
+    label: string,
+    call: () => Promise<T>,
+  ): Promise<T> {
     const started = Date.now();
     let waitedMs = 0;
     for (let retry = 0; ; retry += 1) {

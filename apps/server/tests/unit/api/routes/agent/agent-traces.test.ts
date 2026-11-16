@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SessionRecord } from "../../../../../src/agent/contract";
-import {
-  OWNER_A,
-  OWNER_B,
-  FakeStore,
-  as,
-  harness,
-} from "./agent-fixtures";
+import { OWNER_A, OWNER_B, FakeStore, as, harness } from "./agent-fixtures";
 
 // ----------------------------------------------------------------------------
 // C8 traces & C8v verify

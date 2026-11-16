@@ -1,9 +1,9 @@
 import { useId } from "react";
 import SegmentedToggle from "../../components/SegmentedToggle";
 import MarkdownView, {
-  countResponseSections,
   type SectionsForce,
 } from "../../components/MarkdownView";
+import { countResponseSections } from "../../components/markdown-sections";
 import type { AgentStep, Citation } from "../../types/agent";
 import StepItem from "./StepItem";
 
@@ -30,7 +30,10 @@ export interface TurnState {
 interface Props {
   turn: TurnState;
   onOpenCitation: (citation: Citation) => void;
-  onToggleSection?: (key: string, section: "query" | "steps" | "answer") => void;
+  onToggleSection?: (
+    key: string,
+    section: "query" | "steps" | "answer",
+  ) => void;
   /** Opens (true) or closes (false) the steps section of every turn. */
   onSetAllSteps?: (open: boolean) => void;
   /** Opens (true) or closes (false) the answer section of every turn. */
@@ -99,7 +102,10 @@ export default function TurnView({
           <span className="turn-role">Bạn</span>
           {!queryOpen && (
             <span className="query-snippet muted">
-              : {turn.query.length > 70 ? `${turn.query.slice(0, 70)}…` : turn.query}
+              :{" "}
+              {turn.query.length > 70
+                ? `${turn.query.slice(0, 70)}…`
+                : turn.query}
             </span>
           )}
         </button>
@@ -132,7 +138,10 @@ export default function TurnView({
                 {streaming && <span className="muted"> · đang chạy…</span>}
               </button>
               {onSetAllSteps && (
-                <GroupControls label="Các bước thực thi" onOpen={onSetAllSteps} />
+                <GroupControls
+                  label="Các bước thực thi"
+                  onOpen={onSetAllSteps}
+                />
               )}
             </div>
             {stepsOpen && (
@@ -203,7 +212,10 @@ export default function TurnView({
               aria-busy={streaming}
             >
               {showAnswer && (
-                <MarkdownView text={turn.answer} forceSections={turn.sectionsForce} />
+                <MarkdownView
+                  text={turn.answer}
+                  forceSections={turn.sectionsForce}
+                />
               )}
             </div>
           )}

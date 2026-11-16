@@ -103,7 +103,12 @@ function formatLinked(paths: any[]): string {
       const a = p.article ?? {};
       const head = `Điều ${a.article_number ?? "?"}: ${a.title ?? ""}`;
       const crumbs = breadcrumb({ article: a }).join(" > ");
-      return [crumbs, head, `Liên kết: ${p.relationship ?? "tham chiếu"}`, a.content ?? ""]
+      return [
+        crumbs,
+        head,
+        `Liên kết: ${p.relationship ?? "tham chiếu"}`,
+        a.content ?? "",
+      ]
         .filter((x) => x && String(x).length)
         .join("\n");
     })
@@ -159,9 +164,7 @@ const MAX_REPORTS = 3;
 
 function formatReports(reports: any[]): string {
   return reports
-    .map(
-      (r) => `${r.title}\n${r.summary}\n${(r.findings ?? []).join("\n")}`,
-    )
+    .map((r) => `${r.title}\n${r.summary}\n${(r.findings ?? []).join("\n")}`)
     .join("\n\n---\n\n");
 }
 
@@ -177,7 +180,9 @@ async function communityReportsFor(
     const ctx = await deps.retrieval.retrieve(query, "global");
     return ((ctx?.community_reports ?? []) as any[]).slice(0, MAX_REPORTS);
   } catch (err) {
-    logger.warn(`search_legal_articles: community reports skipped: ${String(err)}`);
+    logger.warn(
+      `search_legal_articles: community reports skipped: ${String(err)}`,
+    );
     return [];
   }
 }
@@ -222,9 +227,7 @@ export function createAgentTools(deps: ToolDeps): AgentToolSpec[] {
         );
       }
       if (reports.length > 0) {
-        parts.push(
-          "Báo cáo tổng quan cộng đồng:\n\n" + formatReports(reports),
-        );
+        parts.push("Báo cáo tổng quan cộng đồng:\n\n" + formatReports(reports));
       }
       const found = [
         seeds.length > 0 ? `${seeds.length} điều luật (ngữ nghĩa)` : "",
@@ -238,7 +241,10 @@ export function createAgentTools(deps: ToolDeps): AgentToolSpec[] {
         citations: [
           ...seeds.map((s) => citationFor(s, "vector")),
           ...linked.map((p) =>
-            citationFor({ article_id: p.article.id, article: p.article }, "path"),
+            citationFor(
+              { article_id: p.article.id, article: p.article },
+              "path",
+            ),
           ),
         ],
         seeds,

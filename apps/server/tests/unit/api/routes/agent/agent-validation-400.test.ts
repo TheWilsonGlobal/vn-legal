@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  OWNER_A,
-  OWNER_B,
-  FakeStore,
-  as,
-  harness,
-} from "./agent-fixtures";
+import { OWNER_A, OWNER_B, FakeStore, as, harness } from "./agent-fixtures";
 
 // ----------------------------------------------------------------------------
 // AC 7: 400 invalid_request

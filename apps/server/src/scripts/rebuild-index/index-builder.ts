@@ -18,10 +18,7 @@ import {
   SCRIPT_NAME,
   type StoreIds,
 } from "./constants-types";
-import {
-  documentNode,
-  toGeminiDocument,
-} from "./document-builder";
+import { documentNode, toGeminiDocument } from "./document-builder";
 import { vectorDimOf } from "./fingerprint-old-store";
 import { log } from "./logger";
 import {
@@ -235,7 +232,9 @@ export async function buildIndex(
         // Jina reports usage per request; stop before the budget is exceeded. Rows so far are kept.
         const used = documents.tokensUsed?.();
         if (used !== undefined) {
-          log(`build usage: tokens_used=${used} budget=${config.embedding.maxTokensBudget}`);
+          log(
+            `build usage: tokens_used=${used} budget=${config.embedding.maxTokensBudget}`,
+          );
           if (used > config.embedding.maxTokensBudget) {
             throw new Error(
               `tokens used ${used} exceed EMBED_MAX_TOKENS_BUDGET=${config.embedding.maxTokensBudget}; stopped before this chunk was written; run --build again to resume (the count restarts per run)`,

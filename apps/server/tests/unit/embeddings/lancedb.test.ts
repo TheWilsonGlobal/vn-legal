@@ -5,7 +5,6 @@ import {
   createVectorStore,
   createIndexingPipeline,
 } from "../../../src/embeddings/lancedb";
-import { config } from "../../../src/shared/config";
 import * as lancedb from "@lancedb/lancedb";
 
 // Mock lancedb

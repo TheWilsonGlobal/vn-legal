@@ -1,7 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  createSessionMemory,
-} from "../../../../../src/agent/memory/session-memory";
+import { createSessionMemory } from "../../../../../src/agent/memory/session-memory";
 import { countTokens } from "../../../../../src/agent/memory";
 import type { Turn } from "../../../../../src/agent/contract";
 import {

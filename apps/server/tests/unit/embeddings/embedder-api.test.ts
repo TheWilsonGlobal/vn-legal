@@ -4,7 +4,6 @@ import {
   getEmbedder,
   resetEmbedder,
 } from "../../../src/embeddings/embedder-api";
-import { config } from "../../../src/shared/config";
 
 // Mock config
 vi.mock("../../../src/shared/config", () => ({

@@ -1,6 +1,9 @@
 // Key rotation: a quota error moves the call to the next key; any other error does not.
 import { describe, it, expect, vi } from "vitest";
-import { withKeyRotation, isQuotaError } from "../../../src/embeddings/key-rotation";
+import {
+  withKeyRotation,
+  isQuotaError,
+} from "../../../src/embeddings/key-rotation";
 
 vi.mock("../../../src/shared/logger", () => ({
   default: { warn: () => {}, info: () => {}, error: () => {} },
@@ -13,7 +16,9 @@ function fake(name: string, behaviour: "ok" | "quota" | "auth") {
     async embed(text: string) {
       this.calls += 1;
       if (behaviour === "quota") {
-        throw Object.assign(new Error("HTTP 429: RESOURCE_EXHAUSTED"), { httpStatus: 429 });
+        throw Object.assign(new Error("HTTP 429: RESOURCE_EXHAUSTED"), {
+          httpStatus: 429,
+        });
       }
       if (behaviour === "auth") throw new Error("HTTP 400: API key not valid");
       return [text.length, 1];
@@ -91,7 +96,11 @@ describe("withKeyRotation", () => {
 
   it("recognises quota errors by status or message", () => {
     expect(isQuotaError({ httpStatus: 429 })).toBe(true);
-    expect(isQuotaError(new Error("failed after 2 retries (HTTP 429: RESOURCE_EXHAUSTED)"))).toBe(true);
+    expect(
+      isQuotaError(
+        new Error("failed after 2 retries (HTTP 429: RESOURCE_EXHAUSTED)"),
+      ),
+    ).toBe(true);
     expect(isQuotaError(new Error("HTTP 400: API key not valid"))).toBe(false);
   });
 });

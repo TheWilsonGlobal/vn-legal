@@ -758,7 +758,10 @@ a:focus-visible,
   line-height: 1.4;
   cursor: pointer;
   white-space: nowrap;
-  transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .seg-toggle-btn:hover {

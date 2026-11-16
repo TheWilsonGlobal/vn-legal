@@ -1,15 +1,6 @@
 import { scoreCase } from "../scorers";
 import type { CaseRun, EvalCase, TurnOutcome } from "../types";
-import {
-  FRESH,
-  Q25,
-  T,
-  act,
-  mk,
-  obs,
-  ok,
-  run,
-} from "./fixture-helpers";
+import { FRESH, Q25, T, act, mk, obs, ok, run } from "./fixture-helpers";
 
 export * from "./fixture-helpers";
 
@@ -71,9 +62,14 @@ export function createFixtureWorld() {
   );
 
   push(
-    mk("F4", "recall_basic", [T(Q25), T("Tôi vừa hỏi về điều nào?", "recall")], {
-      answer_names: [25],
-    }),
+    mk(
+      "F4",
+      "recall_basic",
+      [T(Q25), T("Tôi vừa hỏi về điều nào?", "recall")],
+      {
+        answer_names: [25],
+      },
+    ),
     [
       ok(
         [act("get_article", '{"article_number":25}'), obs("t", [25])],
@@ -156,9 +152,14 @@ export function createFixtureWorld() {
   ]);
 
   push(
-    mk("F12", "followup_window", [T("Giám hộ?"), T("Người đó có nghĩa vụ gì?")], {
-      gold_articles: [46, 48, 55],
-    }),
+    mk(
+      "F12",
+      "followup_window",
+      [T("Giám hộ?"), T("Người đó có nghĩa vụ gì?")],
+      {
+        gold_articles: [46, 48, 55],
+      },
+    ),
     [
       ok([], "t1"),
       ok(
@@ -193,9 +194,14 @@ export function createFixtureWorld() {
   );
 
   push(
-    mk("F14", "recall_basic", [T(Q25), T("Tôi vừa hỏi về điều nào?", "recall")], {
-      answer_names: [25],
-    }),
+    mk(
+      "F14",
+      "recall_basic",
+      [T(Q25), T("Tôi vừa hỏi về điều nào?", "recall")],
+      {
+        answer_names: [25],
+      },
+    ),
     [
       ok([act("get_article", '{"article_number":25}'), obs("t", [25])], "ok"),
       ok(

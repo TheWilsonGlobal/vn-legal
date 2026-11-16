@@ -108,11 +108,17 @@ export default function StepItem({
               <span className="muted">(no output)</span>
             )}
           </p>
-          {step.tool_input && <pre className="step-input">{step.tool_input}</pre>}
+          {step.tool_input && (
+            <pre className="step-input">{step.tool_input}</pre>
+          )}
           {tabs.length > 0 && (
             <>
               {tabs.length > 1 && (
-                <div className="seg-toggle obs-tabs" role="tablist" aria-label="Kiểu hiển thị kết quả">
+                <div
+                  className="seg-toggle obs-tabs"
+                  role="tablist"
+                  aria-label="Kiểu hiển thị kết quả"
+                >
                   {tabs.map((v) => (
                     <button
                       key={v}
@@ -128,10 +134,17 @@ export default function StepItem({
                 </div>
               )}
               {current === "text" && step.citations && (
-                <CitationBreadcrumbs citations={step.citations} onOpen={onOpenCitation} />
+                <CitationBreadcrumbs
+                  citations={step.citations}
+                  onOpen={onOpenCitation}
+                />
               )}
-              {current === "graph" && step.graph && <ObservationGraphView graph={step.graph} />}
-              {current === "reports" && step.reports && <CommunityReports reports={step.reports} />}
+              {current === "graph" && step.graph && (
+                <ObservationGraphView graph={step.graph} />
+              )}
+              {current === "reports" && step.reports && (
+                <CommunityReports reports={step.reports} />
+              )}
             </>
           )}
         </div>

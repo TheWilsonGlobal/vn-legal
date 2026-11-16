@@ -33,7 +33,10 @@ export function sha256(buffer: Buffer): string {
   return createHash("sha256").update(buffer).digest("hex");
 }
 
-export async function fingerprint(dir: string, name: string): Promise<FileRecord> {
+export async function fingerprint(
+  dir: string,
+  name: string,
+): Promise<FileRecord> {
   const path = join(dir, name);
   const info = await stat(path);
   const buffer = await readFile(path);
@@ -174,7 +177,9 @@ export async function protectOldStore(
   return counts;
 }
 
-export async function writeLegacyManifest(counts: OldStoreCounts): Promise<void> {
+export async function writeLegacyManifest(
+  counts: OldStoreCounts,
+): Promise<void> {
   const legacy: IndexManifest = {
     index_id: LEGACY_TRANSFORMERS_INDEX_ID,
     provider: "transformers",
@@ -209,7 +214,10 @@ export async function writeLegacyManifest(counts: OldStoreCounts): Promise<void>
   log(`legacy manifest written: ${path}`);
 }
 
-export async function writeFileAtomic(path: string, text: string): Promise<void> {
+export async function writeFileAtomic(
+  path: string,
+  text: string,
+): Promise<void> {
   const tmp = `${path}.${process.pid}.tmp`;
   try {
     const handle = await open(tmp, "wx");

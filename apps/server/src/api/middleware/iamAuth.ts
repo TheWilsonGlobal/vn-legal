@@ -9,7 +9,12 @@
  * When config.iam.requireLogin is false, unauthenticated callers are treated as having public/viewer access.
  */
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { createIamClient, IamError, type IamClient, type IamPrincipal } from "@iam/client";
+import {
+  createIamClient,
+  IamError,
+  type IamClient,
+  type IamPrincipal,
+} from "@iam/client";
 import { config } from "../../shared/config";
 import logger from "../../shared/logger";
 
@@ -59,7 +64,9 @@ export async function authenticate(
     if (!config.iam.requireLogin) {
       return true;
     }
-    void reply.code(401).send({ error: "Missing authorization token", code: "unauthorized" });
+    void reply
+      .code(401)
+      .send({ error: "Missing authorization token", code: "unauthorized" });
     return false;
   }
 
@@ -82,7 +89,10 @@ export interface PolicyEntry {
  * onRequest hook enforcing a policy table. Deny by default: an unlisted route under the hook is 403.
  */
 export function policyHook(policy: PolicyEntry[]) {
-  type Rule = { public: boolean; guard?: (p: IamPrincipal | undefined) => void };
+  type Rule = {
+    public: boolean;
+    guard?: (p: IamPrincipal | undefined) => void;
+  };
   let table: Map<string, Rule> | undefined;
 
   const build = (): Map<string, Rule> => {
@@ -105,7 +115,10 @@ export function policyHook(policy: PolicyEntry[]) {
     return t;
   };
 
-  return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+  return async (
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ): Promise<void> => {
     const routePattern = request.routeOptions.url;
     if (!routePattern) {
       // Route was not matched by Fastify router; let 404 handler handle it
@@ -145,4 +158,10 @@ export function policyHook(policy: PolicyEntry[]) {
   };
 }
 
-export const POLICY_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
+export const POLICY_METHODS = [
+  "GET",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+] as const;

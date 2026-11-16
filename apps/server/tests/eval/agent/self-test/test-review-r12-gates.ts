@@ -1,8 +1,4 @@
-import {
-  type ReportInput,
-  computeKpiRows,
-  kpiGateFailures,
-} from "../report";
+import { type ReportInput, computeKpiRows, kpiGateFailures } from "../report";
 import { aggregate, compareBl1, scoreCase } from "../scorers";
 import type { EvalCase, TurnOutcome } from "../types";
 import { TestContext } from "./context";

@@ -5,7 +5,6 @@ import {
   createConGraphVectorStore,
   createConGraphIndexingPipeline,
 } from "../../../src/embeddings/congraph";
-import { config } from "../../../src/shared/config";
 import * as congraphdb from "congraphdb";
 
 // Mock congraphdb

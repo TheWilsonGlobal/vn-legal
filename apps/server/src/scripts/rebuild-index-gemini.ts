@@ -7,10 +7,7 @@ import { mkdirSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join, relative, resolve } from "node:path";
-import {
-  config,
-  configIssues,
-} from "../shared/config";
+import { config, configIssues } from "../shared/config";
 import { getEmbedder, type IEmbedder } from "../embeddings/embedder-factory";
 import {
   type IndexManifest,
@@ -88,7 +85,10 @@ function checkConfig(): void {
   if (configIssues.length > 0) {
     throw new UsageError(configIssues.join("; "));
   }
-  if (config.embedding.provider !== "gemini" && config.embedding.provider !== "jina") {
+  if (
+    config.embedding.provider !== "gemini" &&
+    config.embedding.provider !== "jina"
+  ) {
     throw new UsageError(
       `EMBEDDING_PROVIDER must be "gemini" or "jina" for this script (got ${config.embedding.provider ?? "unset"})`,
     );
@@ -207,7 +207,8 @@ async function main(): Promise<number> {
           await step("7 manifest (written last)", async () => {
             const described = describeEmbedder(config);
             const manifest: IndexManifest = {
-              index_id: described.provider === "jina" ? JINA_INDEX_ID : INDEX_ID,
+              index_id:
+                described.provider === "jina" ? JINA_INDEX_ID : INDEX_ID,
               provider: described.provider,
               model: described.model,
               dim: EXPECTED_DIM,

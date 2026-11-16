@@ -7,12 +7,15 @@ import { getIam } from "../middleware/iamAuth";
  *  - GET /api/config: Public sign-in config (Supabase URL, publishable key, requireLogin)
  *  - GET /api/auth/me: Inspect current user session via Bearer token
  */
-export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
+export const authRoutes: FastifyPluginAsync = async (
+  fastify: FastifyInstance,
+) => {
   fastify.get(
     "/auth/me",
     {
       schema: {
-        description: "Who the bearer token belongs to and their IAM roles/permissions",
+        description:
+          "Who the bearer token belongs to and their IAM roles/permissions",
         tags: ["Auth"],
       },
     },

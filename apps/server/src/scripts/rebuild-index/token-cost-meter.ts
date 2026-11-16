@@ -110,7 +110,9 @@ export async function dryRun(docs: Doc[], offline: boolean): Promise<void> {
   if (offline || jina) {
     // Jina: no exact pre-count. The approximation gates the budget here, and the
     // build enforces the budget on the usage Jina reports for each request.
-    const label = jina ? "JINA, NOT A JINA COUNT" : "OFFLINE, NOT A GEMINI COUNT";
+    const label = jina
+      ? "JINA, NOT A JINA COUNT"
+      : "OFFLINE, NOT A GEMINI COUNT";
     const approx = approximateTokens(docs);
     log(
       `DRY RUN (${label}): inputs=${inputs} articles=${articles} ` +

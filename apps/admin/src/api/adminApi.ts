@@ -213,9 +213,7 @@ export async function fetchLlmLastPromptApi(): Promise<unknown> {
   return response.json();
 }
 
-export async function updateLlmEndpointApi(
-  apiUrl: string,
-): Promise<{
+export async function updateLlmEndpointApi(apiUrl: string): Promise<{
   ok: boolean;
   data: { success?: boolean; message?: string; error?: string };
 }> {
@@ -228,9 +226,7 @@ export async function updateLlmEndpointApi(
   return { ok: response.ok, data };
 }
 
-export async function testLlmApi(
-  prompt: string,
-): Promise<{
+export async function testLlmApi(prompt: string): Promise<{
   success: boolean;
   response?: string;
   duration_ms?: number;

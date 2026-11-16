@@ -127,7 +127,10 @@ export function Sidebar({
               <div className="sidebar-llm-details">
                 <div className="sidebar-llm-row">
                   <span className="sidebar-llm-label">Chat:</span>
-                  <span className="sidebar-llm-val mono" title={info.info.model}>
+                  <span
+                    className="sidebar-llm-val mono"
+                    title={info.info.model}
+                  >
                     {info.info.model}
                   </span>
                 </div>

@@ -77,12 +77,20 @@ export function registerConfigRoutes(
         // The agent path embeds with Gemini or Jina (config.embedding). The legacy
         // transformers fields describe a store that is no longer used, so report
         // the running embedder when it is Gemini or Jina.
-        const hosted = config.embedding?.provider === "gemini" || config.embedding?.provider === "jina";
+        const hosted =
+          config.embedding?.provider === "gemini" ||
+          config.embedding?.provider === "jina";
         return reply.send({
           vectorStoreType: config.vectorStoreType,
-          embeddingModel: hosted ? (config.embedding?.model ?? "") : config.embeddingModel,
-          embeddingDimension: hosted ? config.embedding?.dim : config.embeddingDimension,
-          embeddingBackend: hosted ? config.embedding?.provider : config.embeddingBackend,
+          embeddingModel: hosted
+            ? (config.embedding?.model ?? "")
+            : config.embeddingModel,
+          embeddingDimension: hosted
+            ? config.embedding?.dim
+            : config.embeddingDimension,
+          embeddingBackend: hosted
+            ? config.embedding?.provider
+            : config.embeddingBackend,
           llmProvider: config.llm.provider,
           llmModel: config.llm.model,
           clientGraphMode: config.clientGraphMode,

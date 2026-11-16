@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { LlamaCppEmbedder } from "../../../src/embeddings/embedder-llamacpp";
-import { config } from "../../../src/shared/config";
 
 // Mock config
 vi.mock("../../../src/shared/config", () => ({

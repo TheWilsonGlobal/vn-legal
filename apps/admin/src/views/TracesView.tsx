@@ -17,7 +17,14 @@ const KINDS: { value: string; label: string }[] = [
 
 function LlmCallView({ llm }: { llm: NonNullable<TraceRecord["llm"]> }) {
   const block = (value: unknown) => (
-    <pre style={{ whiteSpace: "pre-wrap", margin: "4px 0 12px", maxHeight: "480px", overflow: "auto" }}>
+    <pre
+      style={{
+        whiteSpace: "pre-wrap",
+        margin: "4px 0 12px",
+        maxHeight: "480px",
+        overflow: "auto",
+      }}
+    >
       {typeof value === "string" ? value : JSON.stringify(value, null, 2)}
     </pre>
   );
@@ -108,7 +115,12 @@ export function TracesView() {
       <form
         className="settings-form"
         onSubmit={onApply}
-        style={{ display: "flex", gap: "8px", flexWrap: "wrap", margin: "16px 0" }}
+        style={{
+          display: "flex",
+          gap: "8px",
+          flexWrap: "wrap",
+          margin: "16px 0",
+        }}
       >
         <input
           type="text"
@@ -144,7 +156,9 @@ export function TracesView() {
           <span className="badge-dim">{total} bản ghi</span>
         </div>
         <div className="card-body">
-          {error && <p className="text-muted">Không tải được vết thực thi: {error}</p>}
+          {error && (
+            <p className="text-muted">Không tải được vết thực thi: {error}</p>
+          )}
           {!error && records.length === 0 && !loading && (
             <p className="text-muted">Không có bản ghi nào khớp bộ lọc.</p>
           )}

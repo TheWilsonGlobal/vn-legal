@@ -73,7 +73,8 @@ export function SessionsView() {
         </button>
       </div>
       <p className="text-muted">
-        Phiên hội thoại của mọi người dùng (chỉ đọc). Phiên đã xóa không hiển thị.
+        Phiên hội thoại của mọi người dùng (chỉ đọc). Phiên đã xóa không hiển
+        thị.
       </p>
       <div className="card full-width" style={{ marginTop: "20px" }}>
         <div className="card-header">

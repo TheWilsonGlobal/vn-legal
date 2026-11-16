@@ -102,7 +102,9 @@ const reportsSchema = z
 
 // Full model call, kept whole: prompts and responses are not truncated (the
 // size cap below applies to `content` only). Written by the runner per call.
-const toolCallSchema = z.object({ name: z.string(), args: z.unknown() }).strict();
+const toolCallSchema = z
+  .object({ name: z.string(), args: z.unknown() })
+  .strict();
 
 const llmCallSchema = z
   .object({
@@ -125,7 +127,10 @@ const llmCallSchema = z
       .object({ text: z.string(), tool_calls: z.array(toolCallSchema) })
       .strict(),
     usage: z
-      .object({ input: z.number().nonnegative(), output: z.number().nonnegative() })
+      .object({
+        input: z.number().nonnegative(),
+        output: z.number().nonnegative(),
+      })
       .strict()
       .nullable(),
   })

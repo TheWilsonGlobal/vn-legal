@@ -1,7 +1,5 @@
 import { vi } from "vitest";
-import {
-  ConGraphStorageAdapter,
-} from "../../../../src/storage-adapters/congraph-rag-adapter";
+import { ConGraphStorageAdapter } from "../../../../src/storage-adapters/congraph-rag-adapter";
 
 // Mock logger
 vi.mock("../../../../src/shared/logger", () => ({

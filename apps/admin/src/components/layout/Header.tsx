@@ -31,7 +31,10 @@ export function Header({ user, onRefreshAuth }: HeaderProps) {
       </div>
       <div className="header-actions">
         {user ? (
-          <div className="user-profile" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div
+            className="user-profile"
+            style={{ display: "flex", alignItems: "center", gap: "8px" }}
+          >
             <img
               src={
                 user.picture ||
@@ -41,8 +44,12 @@ export function Header({ user, onRefreshAuth }: HeaderProps) {
               style={{ width: "32px", height: "32px", borderRadius: "50%" }}
             />
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <span style={{ fontWeight: 600, fontSize: "13px" }}>{user.name}</span>
-              <span style={{ fontSize: "11px", color: "#64748b" }}>{user.role}</span>
+              <span style={{ fontWeight: 600, fontSize: "13px" }}>
+                {user.name}
+              </span>
+              <span style={{ fontSize: "11px", color: "#64748b" }}>
+                {user.role}
+              </span>
             </div>
             <button
               type="button"

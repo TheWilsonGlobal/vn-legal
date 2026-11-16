@@ -190,7 +190,10 @@ export function createJsonlSessionStore(
       const path = sessionLogPath(dir, id);
       for (const rec of parseLogStrict(path, await readLogText(path), id)) {
         if (q.kind !== undefined && rec.kind !== q.kind) continue;
-        if (needle && !rec.content.normalize("NFC").toLowerCase().includes(needle))
+        if (
+          needle &&
+          !rec.content.normalize("NFC").toLowerCase().includes(needle)
+        )
           continue;
         matches.push(rec);
       }
@@ -280,8 +283,9 @@ export function createJsonlSessionStore(
       assertOwner(owner);
       return serial(async () => {
         usable();
-        let matches = [...sessions.values()]
-          .filter((s) => s.entry.owner === owner && !s.entry.hidden);
+        let matches = [...sessions.values()].filter(
+          (s) => s.entry.owner === owner && !s.entry.hidden,
+        );
         if (matches.length === 0 && !config.iam.requireLogin) {
           matches = [...sessions.values()].filter((s) => !s.entry.hidden);
         }
@@ -394,7 +398,11 @@ export function createJsonlSessionStore(
           .filter((s) => !s.entry.hidden)
           .map((s) => ({ ...metaOf(s), owner: s.entry.owner }))
           .sort((a, b) =>
-            a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0,
+            a.created_at < b.created_at
+              ? 1
+              : a.created_at > b.created_at
+                ? -1
+                : 0,
           );
       });
     },
@@ -441,17 +449,18 @@ export function createJsonlSessionStore(
       return serial(async () => {
         usable();
         // Hidden sessions stay in the chain check: their logs are kept on disk.
-        let owned = [...sessions.values()]
-          .filter((s) => s.entry.owner === owner);
+        let owned = [...sessions.values()].filter(
+          (s) => s.entry.owner === owner,
+        );
         if (owned.length === 0 && !config.iam.requireLogin) {
           owned = [...sessions.values()];
         }
         owned.sort((a, b) => {
-            const ca = a.entry.created_at;
-            const cb = b.entry.created_at;
-            if (ca !== cb) return ca < cb ? -1 : 1;
-            return a.entry.session_id < b.entry.session_id ? -1 : 1;
-          });
+          const ca = a.entry.created_at;
+          const cb = b.entry.created_at;
+          if (ca !== cb) return ca < cb ? -1 : 1;
+          return a.entry.session_id < b.entry.session_id ? -1 : 1;
+        });
         let records = 0;
         for (const state of owned) {
           const id = state.entry.session_id;

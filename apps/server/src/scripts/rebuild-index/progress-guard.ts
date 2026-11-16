@@ -52,7 +52,10 @@ export function progressIds(progress: Progress, kind: Kind): string[] {
   return progress.community_reports;
 }
 
-export async function saveProgress(path: string, progress: Progress): Promise<void> {
+export async function saveProgress(
+  path: string,
+  progress: Progress,
+): Promise<void> {
   progress.updated_at = new Date().toISOString();
   await writeFileAtomic(path, `${JSON.stringify(progress, null, 2)}\n`);
 }

@@ -1,11 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { KeyObject } from "node:crypto";
-import {
-  createLocalJWKSet,
-  exportJWK,
-  generateKeyPair,
-  SignJWT,
-} from "jose";
+import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from "jose";
 import { createIamClient } from "@iam/client";
 import { setIamClientForTests } from "../../../../src/api/middleware/iamAuth";
 
@@ -18,11 +13,7 @@ export const VIEWER_PERMS = [
   "session:manage_own",
 ];
 
-export const ANALYST_PERMS = [
-  ...VIEWER_PERMS,
-  "graph:read",
-  "community:read",
-];
+export const ANALYST_PERMS = [...VIEWER_PERMS, "graph:read", "community:read"];
 
 export const SUPER_ADMIN_PERMS = [
   ...ANALYST_PERMS,
@@ -120,7 +111,9 @@ export async function installFakeIam() {
       const other = (await generateKeyPair("ES256")).privateKey;
       const id = randomUUID();
       perms.set(id, SUPER_ADMIN_PERMS);
-      return { authorization: `Bearer ${await sign(id, email, "Forged", other)}` };
+      return {
+        authorization: `Bearer ${await sign(id, email, "Forged", other)}`,
+      };
     },
     setIamDown(v: boolean) {
       down = v;

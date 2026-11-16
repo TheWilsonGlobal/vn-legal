@@ -30,7 +30,9 @@ export function isKeyRejected(err: unknown): boolean {
   const status = (err as { httpStatus?: unknown } | null)?.httpStatus;
   if (status === 401 || status === 403) return true;
   const text = err instanceof Error ? `${err.message}` : String(err);
-  return /API key not valid|API_KEY_INVALID|PERMISSION_DENIED|HTTP 40[13]\b/i.test(text);
+  return /API key not valid|API_KEY_INVALID|PERMISSION_DENIED|HTTP 40[13]\b/i.test(
+    text,
+  );
 }
 
 /** Errors that move the call to the next key. Anything else fails at once. */
@@ -77,7 +79,10 @@ export function withKeyRotation<T extends object>(
         return () =>
           chain.reduce(
             (sum, embedder) =>
-              sum + (typeof embedder.tokensUsed === "function" ? embedder.tokensUsed() : 0),
+              sum +
+              (typeof embedder.tokensUsed === "function"
+                ? embedder.tokensUsed()
+                : 0),
             0,
           );
       }

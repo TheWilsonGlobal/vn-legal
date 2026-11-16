@@ -25,12 +25,31 @@ describe("search_legal_articles returns semantic and graph results", () => {
   it("includes path_context articles that are not seeds, with path citations", async () => {
     const t = tool({
       seed_articles: [
-        { article_id: "article_21", score: 0.71, article: art("article_21", 21, "Người chưa thành niên") },
+        {
+          article_id: "article_21",
+          score: 0.71,
+          article: art("article_21", 21, "Người chưa thành niên"),
+        },
       ],
       path_context: [
-        { article: art("article_21", 21, "Người chưa thành niên"), relationship: "seed", depth: 0, path: [] },
-        { article: art("article_25", 25, "Quyền nhân thân"), relationship: "REFERENCES", depth: 1, path: [] },
-        { article: art("article_25", 25, "Quyền nhân thân"), relationship: "REFERENCES", depth: 1, path: [] },
+        {
+          article: art("article_21", 21, "Người chưa thành niên"),
+          relationship: "seed",
+          depth: 0,
+          path: [],
+        },
+        {
+          article: art("article_25", 25, "Quyền nhân thân"),
+          relationship: "REFERENCES",
+          depth: 1,
+          path: [],
+        },
+        {
+          article: art("article_25", 25, "Quyền nhân thân"),
+          relationship: "REFERENCES",
+          depth: 1,
+          path: [],
+        },
       ],
     });
     const res = await t.run({ query: "quyền của người chưa thành niên" });
@@ -48,7 +67,13 @@ describe("search_legal_articles returns semantic and graph results", () => {
 
   it("returns only seeds when there are no linked articles", async () => {
     const t = tool({
-      seed_articles: [{ article_id: "article_21", score: 0.7, article: art("article_21", 21, "A") }],
+      seed_articles: [
+        {
+          article_id: "article_21",
+          score: 0.7,
+          article: art("article_21", 21, "A"),
+        },
+      ],
       path_context: [],
     });
     const res = await t.run({ query: "x" });
@@ -64,12 +89,18 @@ describe("search_legal_articles returns semantic and graph results", () => {
             ? global()
             : {
                 seed_articles: [
-                  { article_id: "article_21", score: 0.7, article: art("article_21", 21, "A") },
+                  {
+                    article_id: "article_21",
+                    score: 0.7,
+                    article: art("article_21", 21, "A"),
+                  },
                 ],
                 path_context: [],
               },
       },
-      memory: { recall: async () => ({ fresh_session: true, items: [] }) } as any,
+      memory: {
+        recall: async () => ({ fresh_session: true, items: [] }),
+      } as any,
       sessionId: "s",
       runId: "r",
     })[0];
@@ -77,7 +108,11 @@ describe("search_legal_articles returns semantic and graph results", () => {
   it("adds community reports from the global retrieval", async () => {
     const t = byMode(async () => ({
       community_reports: [
-        { title: "Năng lực hành vi", summary: "Tóm tắt chủ đề", findings: ["Ý một"] },
+        {
+          title: "Năng lực hành vi",
+          summary: "Tóm tắt chủ đề",
+          findings: ["Ý một"],
+        },
       ],
     }));
     const res = await t.run({ query: "x" });
@@ -100,12 +135,31 @@ describe("search_legal_articles returns semantic and graph results", () => {
   it("returns graph nodes and reference edges for the graph tab", async () => {
     const t = tool({
       seed_articles: [
-        { article_id: "article_21", score: 0.7, article: art("article_21", 21, "A") },
+        {
+          article_id: "article_21",
+          score: 0.7,
+          article: art("article_21", 21, "A"),
+        },
       ],
       path_context: [
-        { article: art("article_21", 21, "A"), relationship: "seed", depth: 0, path: ["article_21"] },
-        { article: art("article_25", 25, "B"), relationship: "REFERENCES", depth: 1, path: ["article_21", "article_25"] },
-        { article: art("article_47", 47, "C"), relationship: "REFERENCES", depth: 2, path: ["article_21", "article_25", "article_47"] },
+        {
+          article: art("article_21", 21, "A"),
+          relationship: "seed",
+          depth: 0,
+          path: ["article_21"],
+        },
+        {
+          article: art("article_25", 25, "B"),
+          relationship: "REFERENCES",
+          depth: 1,
+          path: ["article_21", "article_25"],
+        },
+        {
+          article: art("article_47", 47, "C"),
+          relationship: "REFERENCES",
+          depth: 2,
+          path: ["article_21", "article_25", "article_47"],
+        },
       ],
     });
     const res = await t.run({ query: "x" });

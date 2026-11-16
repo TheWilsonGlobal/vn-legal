@@ -11,7 +11,9 @@ export default function CommunityReports({ reports }: Props) {
       {reports.map((r, i) => (
         <li key={`${r.title}-${i}`} className="community-report">
           <div className="community-report-head">
-            <span className="community-report-title">{r.title || "Báo cáo"}</span>
+            <span className="community-report-title">
+              {r.title || "Báo cáo"}
+            </span>
             {typeof r.rating === "number" && (
               <span className="community-report-rating">★ {r.rating}</span>
             )}

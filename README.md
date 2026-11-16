@@ -24,19 +24,19 @@ Two paths are in the code today:
 
 ## Tech Stack
 
-| Component             | Technology                                                                          |
-| --------------------- | ----------------------------------------------------------------------------------- |
-| **Monorepo Manager**  | pnpm workspaces                                                                     |
-| **Backend API**       | Node.js 22+, TypeScript, Fastify                                                    |
-| **Client UI**         | React 19, Vite                                                                      |
-| **Admin UI**          | React 19, Vite, Sigma.js                                                            |
-| **Graph store**       | ConGraphDB (embedded, `.cgraph` files)                                              |
-| **Vector store**      | ConGraphDB HNSW tables (cosine)                                                     |
-| **Embeddings**        | `gemini-embedding-2`, 768-d (agent path). `paraphrase-multilingual-MiniLM` 384-d (legacy rollback, `@xenova/transformers`) |
-| **Chat model**        | `gemini-3.5-flash-lite` through Google's OpenAI-compatible endpoint (`@langchain/openai`) |
-| **RAG engine**        | ConGraphRAG (`congraph-rag`: PathRAG + GraphRAG)                                    |
-| **Agent framework**   | LangGraph.js (`@langchain/langgraph`), installed, not yet used in code              |
-| **Observability**     | OpenTelemetry + Langfuse (`@langfuse/*`), optional                                  |
+| Component            | Technology                                                                                                                 |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Monorepo Manager** | pnpm workspaces                                                                                                            |
+| **Backend API**      | Node.js 22+, TypeScript, Fastify                                                                                           |
+| **Client UI**        | React 19, Vite                                                                                                             |
+| **Admin UI**         | React 19, Vite, Sigma.js                                                                                                   |
+| **Graph store**      | ConGraphDB (embedded, `.cgraph` files)                                                                                     |
+| **Vector store**     | ConGraphDB HNSW tables (cosine)                                                                                            |
+| **Embeddings**       | `gemini-embedding-2`, 768-d (agent path). `paraphrase-multilingual-MiniLM` 384-d (legacy rollback, `@xenova/transformers`) |
+| **Chat model**       | `gemini-3.5-flash-lite` through Google's OpenAI-compatible endpoint (`@langchain/openai`)                                  |
+| **RAG engine**       | ConGraphRAG (`congraph-rag`: PathRAG + GraphRAG)                                                                           |
+| **Agent framework**  | LangGraph.js (`@langchain/langgraph`), installed, not yet used in code                                                     |
+| **Observability**    | OpenTelemetry + Langfuse (`@langfuse/*`), optional                                                                         |
 
 ---
 
@@ -142,21 +142,21 @@ If both keys belong to the same Google Cloud project, they share one quota.
 
 ### 2. Variables
 
-| Variable                  | Value in `.env.example`                                    | Meaning                                                |
-| ------------------------- | ---------------------------------------------------------- | ------------------------------------------------------ |
-| `LLM_PROVIDER`            | `gemini`                                                   | The only value the agent accepts (planned guard)       |
-| `GEMINI_MODEL_NAME`       | `gemini-3.5-flash-lite`                                    | Chat model id                                          |
-| `GEMINI_OPENAI_BASE_URL`  | `https://generativelanguage.googleapis.com/v1beta/openai/` | Base URL, with the trailing slash                      |
-| `GEMINI_MAX_RETRIES`      | `2`                                                        | Retries for 429, 503 and network errors                |
-| `GEMINI_MAX_CONCURRENCY`  | `4`                                                        | In-flight chat calls in this process                   |
-| `EMBEDDING_PROVIDER`      | `gemini`                                                   | `gemini`, or `transformers` for rollback only          |
-| `EMBEDDING_MODEL`         | `gemini-embedding-2`                                       | Embedding model id                                     |
-| `EMBEDDING_DIM`           | `768`                                                      | Output dimension, must match the index manifest        |
-| `EMBED_BATCH_SIZE`        | `50`                                                       | Inputs per embedding request during the index build    |
-| `EMBED_MAX_CONCURRENCY`   | `2`                                                        | Parallel embedding requests during the index build     |
-| `EMBED_MAX_TOKENS_BUDGET` | `2000000`                                                  | The index build aborts above this token total          |
-| `CONGRAPH_VECTOR_DB_PATH` | `storage/congraph_vectors_gemini-embedding-2_768.cgraph`   | The vector store the server opens                      |
-| `DATA_SOURCE_PATH`        | `data/Docs/Vietnam Civil Law.json`                         | Corpus file (689 articles)                             |
+| Variable                  | Value in `.env.example`                                    | Meaning                                             |
+| ------------------------- | ---------------------------------------------------------- | --------------------------------------------------- |
+| `LLM_PROVIDER`            | `gemini`                                                   | The only value the agent accepts (planned guard)    |
+| `GEMINI_MODEL_NAME`       | `gemini-3.5-flash-lite`                                    | Chat model id                                       |
+| `GEMINI_OPENAI_BASE_URL`  | `https://generativelanguage.googleapis.com/v1beta/openai/` | Base URL, with the trailing slash                   |
+| `GEMINI_MAX_RETRIES`      | `2`                                                        | Retries for 429, 503 and network errors             |
+| `GEMINI_MAX_CONCURRENCY`  | `4`                                                        | In-flight chat calls in this process                |
+| `EMBEDDING_PROVIDER`      | `gemini`                                                   | `gemini`, or `transformers` for rollback only       |
+| `EMBEDDING_MODEL`         | `gemini-embedding-2`                                       | Embedding model id                                  |
+| `EMBEDDING_DIM`           | `768`                                                      | Output dimension, must match the index manifest     |
+| `EMBED_BATCH_SIZE`        | `50`                                                       | Inputs per embedding request during the index build |
+| `EMBED_MAX_CONCURRENCY`   | `2`                                                        | Parallel embedding requests during the index build  |
+| `EMBED_MAX_TOKENS_BUDGET` | `2000000`                                                  | The index build aborts above this token total       |
+| `CONGRAPH_VECTOR_DB_PATH` | `storage/congraph_vectors_gemini-embedding-2_768.cgraph`   | The vector store the server opens                   |
+| `DATA_SOURCE_PATH`        | `data/Docs/Vietnam Civil Law.json`                         | Corpus file (689 articles)                          |
 
 The agent, memory and Langfuse variables are listed in `.env.example`, with their defaults.
 

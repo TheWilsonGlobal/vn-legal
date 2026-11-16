@@ -23,7 +23,11 @@ export function runR12LangfuseAndPlanTests(ctx: TestContext) {
       expected_first_tool: "get_article",
     });
     const rr = run(c, [t]);
-    const built = buildLangfuseScores([rr], [scoreCase(rr, evalCtx)], "agent-eval-X");
+    const built = buildLangfuseScores(
+      [rr],
+      [scoreCase(rr, evalCtx)],
+      "agent-eval-X",
+    );
     check(
       "R12-10 langfuse: every score carries the run name in comment and metadata; the push line states the tag was not applied (old code: no run name)",
       built.scores.length === 2 &&

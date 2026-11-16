@@ -7,7 +7,12 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from "react";
-import { createSession, getInfo, isAbortError, listSessions } from "./api/agent";
+import {
+  createSession,
+  getInfo,
+  isAbortError,
+  listSessions,
+} from "./api/agent";
 import { initAuth, onAuthChange, signInWithGoogle } from "./api/auth";
 import { Sidebar } from "./layout/Sidebar";
 import { Topbar, type UserProfile } from "./layout/Topbar";
@@ -232,8 +237,11 @@ function App() {
               <h3 style={{ fontSize: "20px", marginBottom: "12px" }}>
                 Yêu cầu đăng nhập
               </h3>
-              <p style={{ color: "var(--muted, #64748b)", marginBottom: "24px" }}>
-                Hệ thống Tra cứu & Tư vấn Pháp luật yêu cầu đăng nhập tài khoản Google để tiếp tục.
+              <p
+                style={{ color: "var(--muted, #64748b)", marginBottom: "24px" }}
+              >
+                Hệ thống Tra cứu & Tư vấn Pháp luật yêu cầu đăng nhập tài khoản
+                Google để tiếp tục.
               </p>
               <button
                 type="button"
@@ -255,34 +263,34 @@ function App() {
             </div>
           ) : (
             VIEWS.map(({ id, label }) => {
-            const entry = resolveView(id);
-            const isActive = id === activeView;
-            return (
-              <section
-                key={id}
-                id={`view-${id}`}
-                className="view-slot"
-                aria-label={label}
-                hidden={!isActive}
-              >
-                {entry.status === "ready" ? (
-                  <ViewErrorBoundary label={label}>
-                    <entry.Component {...viewProps(id)} />
-                  </ViewErrorBoundary>
-                ) : (
-                  <div className="view-missing" role="alert">
-                    <h3>Chưa có giao diện</h3>
-                    <p>
-                      {entry.status === "missing"
-                        ? "Không tìm thấy tệp"
-                        : "Tệp không xuất khẩu mặc định một component:"}{" "}
-                      <code>{entry.file.replace("../", "src/")}</code>
-                    </p>
-                  </div>
-                )}
-              </section>
-            );
-          })
+              const entry = resolveView(id);
+              const isActive = id === activeView;
+              return (
+                <section
+                  key={id}
+                  id={`view-${id}`}
+                  className="view-slot"
+                  aria-label={label}
+                  hidden={!isActive}
+                >
+                  {entry.status === "ready" ? (
+                    <ViewErrorBoundary label={label}>
+                      <entry.Component {...viewProps(id)} />
+                    </ViewErrorBoundary>
+                  ) : (
+                    <div className="view-missing" role="alert">
+                      <h3>Chưa có giao diện</h3>
+                      <p>
+                        {entry.status === "missing"
+                          ? "Không tìm thấy tệp"
+                          : "Tệp không xuất khẩu mặc định một component:"}{" "}
+                        <code>{entry.file.replace("../", "src/")}</code>
+                      </p>
+                    </div>
+                  )}
+                </section>
+              );
+            })
           )}
         </main>
       </div>

@@ -269,11 +269,24 @@ function App() {
                 textAlign: "center",
               }}
             >
-              <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "8px" }}>
+              <h3
+                style={{
+                  fontSize: "18px",
+                  fontWeight: 700,
+                  marginBottom: "8px",
+                }}
+              >
                 Yêu cầu đăng nhập Quản trị viên
               </h3>
-              <p style={{ color: "#64748b", fontSize: "14px", marginBottom: "20px" }}>
-                Vui lòng đăng nhập với tài khoản Google để truy cập trang quản trị tri thức và cấu hình mô hình.
+              <p
+                style={{
+                  color: "#64748b",
+                  fontSize: "14px",
+                  marginBottom: "20px",
+                }}
+              >
+                Vui lòng đăng nhập với tài khoản Google để truy cập trang quản
+                trị tri thức và cấu hình mô hình.
               </p>
               <button
                 type="button"

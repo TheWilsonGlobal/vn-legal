@@ -4,7 +4,6 @@ import {
   getEmbedder,
   resetEmbedder,
 } from "../../../src/embeddings/embedder";
-import { config } from "../../../src/shared/config";
 import { pipeline } from "@xenova/transformers";
 
 // Mock transformers

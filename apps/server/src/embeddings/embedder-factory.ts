@@ -57,7 +57,9 @@ export async function getEmbedder(): Promise<IEmbedder> {
     // Server path: gemini-embedding-2 through the Gemini API (plan §5.9), or
     // jina-embeddings-v3 through the Jina Embedding API.
     const keyName =
-      provider === "jina" ? "JINA_EMBEDDING_API_KEY" : "GEMINI_EMBEDDING_API_KEY";
+      provider === "jina"
+        ? "JINA_EMBEDDING_API_KEY"
+        : "GEMINI_EMBEDDING_API_KEY";
     const apiKey = config.embedding.apiKey;
     if (!apiKey) {
       throw new Error(
@@ -96,8 +98,13 @@ export async function getEmbedder(): Promise<IEmbedder> {
       for (const key of fallbackKeys) {
         fallbacks.push(await build(key));
       }
-      embedderInstance = withKeyRotation(embedderInstance, fallbacks) as IEmbedder;
-      logger.info(`${provider} embedding key rotation enabled: ${fallbackKeys.length} fallback key(s)`);
+      embedderInstance = withKeyRotation(
+        embedderInstance,
+        fallbacks,
+      ) as IEmbedder;
+      logger.info(
+        `${provider} embedding key rotation enabled: ${fallbackKeys.length} fallback key(s)`,
+      );
     }
     return embedderInstance;
   }

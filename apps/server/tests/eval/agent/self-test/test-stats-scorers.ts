@@ -63,7 +63,8 @@ export function runStatsAndScorersTests(ctx: TestContext) {
   );
   check(
     "namesAnyArticle",
-    namesAnyArticle("xem Điều 3") && !namesAnyArticle("không có điều khoản nào"),
+    namesAnyArticle("xem Điều 3") &&
+      !namesAnyArticle("không có điều khoản nào"),
   );
   check(
     "checkToolCall: valid get_article",

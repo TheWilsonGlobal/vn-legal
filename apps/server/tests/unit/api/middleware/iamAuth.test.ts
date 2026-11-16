@@ -2,7 +2,10 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import Fastify, { type FastifyInstance } from "fastify";
 import { authRoutes } from "../../../../src/api/routes/auth";
 import { configRoutes } from "../../../../src/api/routes/config";
-import { policyHook, type PolicyEntry } from "../../../../src/api/middleware/iamAuth";
+import {
+  policyHook,
+  type PolicyEntry,
+} from "../../../../src/api/middleware/iamAuth";
 import {
   installFakeIam,
   VIEWER_PERMS,
@@ -22,14 +25,26 @@ describe("IAM Auth & Policy Hook Verification", () => {
     { method: "GET", url: "/api/auth/me", permission: "public" },
     { method: "POST", url: "/api/consult", permission: "consult:create" },
     { method: "GET", url: "/api/admin/overview", permission: "graph:read" },
-    { method: "POST", url: "/api/admin/rebuild-vector", permission: "vector:manage" },
+    {
+      method: "POST",
+      url: "/api/admin/rebuild-vector",
+      permission: "vector:manage",
+    },
   ];
 
   beforeAll(async () => {
     config.iam.requireLogin = true;
     fakeIam = await installFakeIam();
-    viewer = await fakeIam.loginAs("viewer@example.com", "Viewer User", VIEWER_PERMS);
-    admin = await fakeIam.loginAs("admin@example.com", "Admin User", SUPER_ADMIN_PERMS);
+    viewer = await fakeIam.loginAs(
+      "viewer@example.com",
+      "Viewer User",
+      VIEWER_PERMS,
+    );
+    admin = await fakeIam.loginAs(
+      "admin@example.com",
+      "Admin User",
+      SUPER_ADMIN_PERMS,
+    );
 
     app = Fastify();
     app.addHook("onRequest", policyHook(policy));
@@ -40,7 +55,9 @@ describe("IAM Auth & Policy Hook Verification", () => {
 
     app.post("/api/consult", async () => ({ status: "consult_ok" }));
     app.get("/api/admin/overview", async () => ({ status: "overview_ok" }));
-    app.post("/api/admin/rebuild-vector", async () => ({ status: "rebuild_ok" }));
+    app.post("/api/admin/rebuild-vector", async () => ({
+      status: "rebuild_ok",
+    }));
     app.get("/api/unlisted-endpoint", async () => ({ status: "should_fail" }));
 
     await app.ready();
@@ -137,7 +154,11 @@ describe("IAM Auth & Policy Hook Verification", () => {
 
   it("When IAM service is down, protected requests fail closed with 503", async () => {
     // Fresh user without cache
-    const freshUser = await fakeIam.loginAs("fresh@example.com", "Fresh User", VIEWER_PERMS);
+    const freshUser = await fakeIam.loginAs(
+      "fresh@example.com",
+      "Fresh User",
+      VIEWER_PERMS,
+    );
     fakeIam.setIamDown(true);
     try {
       const res = await app.inject({

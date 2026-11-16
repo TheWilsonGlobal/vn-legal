@@ -73,7 +73,9 @@ function layout(graph: ObservationGraph) {
       graph.edges.filter((e) => e.to === id).map((e) => row.get(e.from));
     const barycentre = (n: Node) => {
       const ys = parentsOf(n.id).filter((y): y is number => y !== undefined);
-      return ys.length > 0 ? ys.reduce((s, y) => s + y, 0) / ys.length : n.number;
+      return ys.length > 0
+        ? ys.reduce((s, y) => s + y, 0) / ys.length
+        : n.number;
     };
     const sorted = [...nodes].sort(
       (a, b) => barycentre(a) - barycentre(b) || a.number - b.number,

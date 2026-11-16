@@ -184,7 +184,9 @@ export function createLegalAgentRunner(
     } catch {
       // Unreadable manifest: boot refuses to start on it, so the fallback is for display only.
     }
-    return provider === "jina" ? "jina-embeddings-v3-1024" : "gemini-embedding-2-768";
+    return provider === "jina"
+      ? "jina-embeddings-v3-1024"
+      : "gemini-embedding-2-768";
   }
 
   function toContext(

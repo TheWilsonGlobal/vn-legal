@@ -5,13 +5,7 @@ import {
   RetryableHttpError,
 } from "../../../../src/embeddings/embedder-gemini";
 import logger from "../../../../src/shared/logger";
-import {
-  DIM,
-  article,
-  httpError,
-  okFor,
-  ready,
-} from "./gemini-fixtures";
+import { DIM, article, httpError, okFor, ready } from "./gemini-fixtures";
 
 const { embedContent, ctorOptions } = vi.hoisted(() => ({
   embedContent: vi.fn(),
