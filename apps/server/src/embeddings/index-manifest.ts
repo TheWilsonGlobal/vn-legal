@@ -18,6 +18,25 @@ export type EmbeddingConfig = Pick<
 export const GEMINI_DOC_PREFIX = "title: {title} | text: {content}";
 export const GEMINI_QUERY_PREFIX = "task: search result | query: {content}";
 
+/**
+ * jina-embeddings-v3 text templates. The document template is the Gemini one, so
+ * both indexes embed the same text. The query is embedded as given; the
+ * retrieval.passage / retrieval.query task is sent as an API parameter (embedder-jina.ts).
+ */
+export const JINA_DOC_TEMPLATE = GEMINI_DOC_PREFIX;
+export const JINA_QUERY_TEMPLATE = "{content}";
+
+/** Fills {title} and {content} with literal replacement, so "$&" in the text survives. */
+export function renderTemplate(
+  template: string,
+  title: string,
+  content: string,
+): string {
+  return template.replace(/\{title\}|\{content\}/g, (m) =>
+    m === "{title}" ? title : content,
+  );
+}
+
 /** The legacy 384-d store, built by the transformers embedder. */
 export const LEGACY_TRANSFORMERS_MODEL =
   "Xenova/paraphrase-multilingual-MiniLM-L12-v2";
@@ -83,6 +102,21 @@ export function describeEmbedder(cfg: EmbeddingConfig): EmbedderDescription {
       query_prefix: GEMINI_QUERY_PREFIX,
     };
   }
+  if (provider === "jina") {
+    const model = cfg.embedding.model;
+    if (!model) {
+      throw new Error(
+        "EMBEDDING_MODEL is not set (required by EMBEDDING_PROVIDER=jina)",
+      );
+    }
+    return {
+      provider: "jina",
+      model,
+      dim: cfg.embedding.dim,
+      doc_prefix: JINA_DOC_TEMPLATE,
+      query_prefix: JINA_QUERY_TEMPLATE,
+    };
+  }
   if (provider === "transformers") {
     return {
       provider: "transformers",
@@ -93,7 +127,7 @@ export function describeEmbedder(cfg: EmbeddingConfig): EmbedderDescription {
     };
   }
   throw new Error(
-    'EMBEDDING_PROVIDER must be "gemini" (or "transformers" for the documented rollback); it is unset or not a supported value',
+    'EMBEDDING_PROVIDER must be "gemini", "jina" (or "transformers" for the documented rollback); it is unset or not a supported value',
   );
 }
 
@@ -104,9 +138,9 @@ export function describeEmbedder(cfg: EmbeddingConfig): EmbedderDescription {
  */
 export function assertServerEmbeddingConfig(cfg: EmbeddingConfig): void {
   const provider = cfg.embedding.provider;
-  if (provider !== "gemini" && provider !== "transformers") {
+  if (provider !== "gemini" && provider !== "jina" && provider !== "transformers") {
     throw new Error(
-      'EMBEDDING_PROVIDER must be "gemini" (or "transformers" for the documented rollback); it is unset or not a supported value',
+      'EMBEDDING_PROVIDER must be "gemini" or "jina" (or "transformers" for the documented rollback); it is unset or not a supported value',
     );
   }
   if (provider === "transformers") {
@@ -115,17 +149,19 @@ export function assertServerEmbeddingConfig(cfg: EmbeddingConfig): void {
   }
   if (cfg.vectorStoreType === "lancedb") {
     throw new Error(
-      "VECTOR_STORE_TYPE=lancedb is not supported with EMBEDDING_PROVIDER=gemini (phase 01 rebuilds the congraph store only)",
+      `VECTOR_STORE_TYPE=lancedb is not supported with EMBEDDING_PROVIDER=${provider} (the congraph store only)`,
     );
   }
+  const keyName =
+    provider === "jina" ? "JINA_EMBEDDING_API_KEY" : "GEMINI_EMBEDDING_API_KEY";
   if (!cfg.embedding.apiKey) {
     throw new Error(
-      "GEMINI_EMBEDDING_API_KEY is not set (required by EMBEDDING_PROVIDER=gemini)",
+      `${keyName} is not set (required by EMBEDDING_PROVIDER=${provider})`,
     );
   }
   if (!cfg.embedding.model) {
     throw new Error(
-      "EMBEDDING_MODEL is not set (required by EMBEDDING_PROVIDER=gemini)",
+      `EMBEDDING_MODEL is not set (required by EMBEDDING_PROVIDER=${provider})`,
     );
   }
 }

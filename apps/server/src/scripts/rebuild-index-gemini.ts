@@ -21,13 +21,10 @@ import {
   writeManifestAtomic,
 } from "../embeddings/index-manifest";
 import {
-  GEMINI_DOC_PREFIX,
-  GEMINI_QUERY_PREFIX,
-} from "../embeddings/index-manifest";
-import {
   EXPECTED_DIM,
   type FileRecord,
   INDEX_ID,
+  JINA_INDEX_ID,
   MAX_LIVE_CONCURRENCY,
   type Mode,
   OLD_STORE,
@@ -91,9 +88,9 @@ function checkConfig(): void {
   if (configIssues.length > 0) {
     throw new UsageError(configIssues.join("; "));
   }
-  if (config.embedding.provider !== "gemini") {
+  if (config.embedding.provider !== "gemini" && config.embedding.provider !== "jina") {
     throw new UsageError(
-      `EMBEDDING_PROVIDER must be "gemini" for this script (got ${config.embedding.provider ?? "unset"})`,
+      `EMBEDDING_PROVIDER must be "gemini" or "jina" for this script (got ${config.embedding.provider ?? "unset"})`,
     );
   }
   assertServerEmbeddingConfig(config);
@@ -208,19 +205,20 @@ async function main(): Promise<number> {
             log("recall@5 not computed (informational; ER1 gates)");
           });
           await step("7 manifest (written last)", async () => {
+            const described = describeEmbedder(config);
             const manifest: IndexManifest = {
-              index_id: INDEX_ID,
-              provider: "gemini",
-              model: config.embedding.model,
+              index_id: described.provider === "jina" ? JINA_INDEX_ID : INDEX_ID,
+              provider: described.provider,
+              model: described.model,
               dim: EXPECTED_DIM,
-              doc_prefix: GEMINI_DOC_PREFIX,
-              query_prefix: GEMINI_QUERY_PREFIX,
+              doc_prefix: described.doc_prefix,
+              query_prefix: described.query_prefix,
               corpus_sha256: inputs.corpusSha256,
               counts: { ...built },
               created_at: new Date().toISOString(),
             };
             await writeManifestAtomic(target, manifest);
-            await assertIndexManifest(target, describeEmbedder(config));
+            await assertIndexManifest(target, described);
             log(`manifest written and read back: ${manifestPathFor(target)}`);
           });
         } else {

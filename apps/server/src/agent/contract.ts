@@ -145,7 +145,7 @@ export interface AgentRunResponse {
   model: string;
   endpoint: string; // r4: Gemini-only, native only
   embedding: {
-    provider: "gemini" | "transformers";
+    provider: "gemini" | "jina" | "transformers";
     model: string;
     dim: number;
     index_id: string;
@@ -374,7 +374,7 @@ export interface AgentRunner {
     tool_mode: "native";
     max_steps: number;
     embedding: {
-      provider: "gemini" | "transformers";
+      provider: "gemini" | "jina" | "transformers";
       model: string;
       dim: number;
       index_id: string;

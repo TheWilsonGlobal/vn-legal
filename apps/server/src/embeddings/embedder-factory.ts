@@ -29,6 +29,8 @@ export interface DocumentEmbedder {
   embedDocuments(
     docs: { id: string; title: string; text: string }[],
   ): Promise<number[][]>;
+  /** Cumulative tokens Jina reported as used; absent for Gemini. The build checks it against the budget. */
+  tokensUsed?(): number;
 }
 
 export function documentEmbedderOf(
@@ -51,49 +53,51 @@ export async function getEmbedder(): Promise<IEmbedder> {
   }
 
   const provider = config.embedding.provider;
-  if (provider === "gemini") {
-    // Server path: gemini-embedding-2 through the Gemini API (plan §5.9).
+  if (provider === "gemini" || provider === "jina") {
+    // Server path: gemini-embedding-2 through the Gemini API (plan §5.9), or
+    // jina-embeddings-v3 through the Jina Embedding API.
+    const keyName =
+      provider === "jina" ? "JINA_EMBEDDING_API_KEY" : "GEMINI_EMBEDDING_API_KEY";
     const apiKey = config.embedding.apiKey;
     if (!apiKey) {
       throw new Error(
-        "GEMINI_EMBEDDING_API_KEY is not set (required by EMBEDDING_PROVIDER=gemini)",
+        `${keyName} is not set (required by EMBEDDING_PROVIDER=${provider})`,
       );
     }
     const model = config.embedding.model;
     if (!model) {
       throw new Error(
-        "EMBEDDING_MODEL is not set (required by EMBEDDING_PROVIDER=gemini)",
+        `EMBEDDING_MODEL is not set (required by EMBEDDING_PROVIDER=${provider})`,
       );
     }
     logger.info(
-      `Creating embedder provider: gemini (${model}, ${config.embedding.dim}-d)`,
+      `Creating embedder provider: ${provider} (${model}, ${config.embedding.dim}-d)`,
     );
-    const { GeminiEmbedder } = await import("./embedder-gemini.js");
-    embedderInstance = new GeminiEmbedder({
-      apiKey,
-      model,
-      dim: config.embedding.dim,
-      batchSize: config.embedding.batchSize,
-      maxConcurrency: config.embedding.maxConcurrency,
-    });
-    await embedderInstance.initialize();
+    const build = async (key: string): Promise<IEmbedder> => {
+      const options = {
+        apiKey: key,
+        model,
+        dim: config.embedding.dim,
+        batchSize: config.embedding.batchSize,
+        maxConcurrency: config.embedding.maxConcurrency,
+      };
+      const alt: IEmbedder =
+        provider === "jina"
+          ? new (await import("./embedder-jina.js")).JinaEmbedder(options)
+          : new (await import("./embedder-gemini.js")).GeminiEmbedder(options);
+      await alt.initialize();
+      return alt;
+    };
+    embedderInstance = await build(apiKey);
     const fallbackKeys = config.embedding.fallbackApiKeys ?? [];
     if (fallbackKeys.length > 0) {
       // Same model and dimension, other keys: only quota errors rotate (key-rotation.ts).
-      const fallbacks = [];
+      const fallbacks: IEmbedder[] = [];
       for (const key of fallbackKeys) {
-        const alt = new GeminiEmbedder({
-          apiKey: key,
-          model,
-          dim: config.embedding.dim,
-          batchSize: config.embedding.batchSize,
-          maxConcurrency: config.embedding.maxConcurrency,
-        });
-        await alt.initialize();
-        fallbacks.push(alt);
+        fallbacks.push(await build(key));
       }
       embedderInstance = withKeyRotation(embedderInstance, fallbacks) as IEmbedder;
-      logger.info(`Gemini embedding key rotation enabled: ${fallbackKeys.length} fallback key(s)`);
+      logger.info(`${provider} embedding key rotation enabled: ${fallbackKeys.length} fallback key(s)`);
     }
     return embedderInstance;
   }
@@ -107,7 +111,7 @@ export async function getEmbedder(): Promise<IEmbedder> {
   }
   if (provider !== undefined) {
     throw new Error(
-      'EMBEDDING_PROVIDER must be "gemini" or "transformers"; it is not a supported value',
+      'EMBEDDING_PROVIDER must be "gemini", "jina" or "transformers"; it is not a supported value',
     );
   }
 

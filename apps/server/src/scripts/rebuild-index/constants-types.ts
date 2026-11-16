@@ -1,5 +1,6 @@
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { config } from "../../shared/config";
 import type { ArticleClause, ArticleNode } from "../../shared/types";
 
 export const SCRIPT_NAME = "rebuild-index-gemini";
@@ -13,8 +14,10 @@ export const OLD_STORE_PREFIX = "congraph_vectors.";
 export const DATA_DIR = join(REPO_ROOT, "data");
 export const COMMUNITY_EXPORT = join(DATA_DIR, "community_reports.json");
 export const EXPECTED_ARTICLES = 689;
-export const EXPECTED_DIM = 768;
+// jina-embeddings-v3 outputs 1024 dims natively; gemini-embedding-2 index is 768.
+export const EXPECTED_DIM = config.embedding.provider === "jina" ? 1024 : 768;
 export const INDEX_ID = "gemini-embedding-2-768";
+export const JINA_INDEX_ID = "jina-embeddings-v3-1024";
 export const PRICE_PER_MILLION_TOKENS_USD = 0.2;
 export const COUNT_TOKENS_TIMEOUT_MS = 30_000;
 export const MAX_LIVE_CONCURRENCY = 2;

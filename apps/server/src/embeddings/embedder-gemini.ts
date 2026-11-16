@@ -233,7 +233,7 @@ function validateVector(values: unknown, id: string, dim: number): number[] {
   return values as number[];
 }
 
-class Throttle {
+export class Throttle {
   private active = 0;
   private readonly waiters: Array<() => void> = [];
 

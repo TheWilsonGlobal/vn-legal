@@ -1,11 +1,14 @@
 import { GoogleGenAI } from "@google/genai";
 import { config } from "../../shared/config";
-import type { IEmbedder } from "../../embeddings/embedder-factory";
+import type {
+  DocumentEmbedder,
+  IEmbedder,
+} from "../../embeddings/embedder-factory";
 import {
-  type GeminiEmbedder,
   estimateInputTokens,
   GEMINI_MAX_INPUT_TOKENS,
 } from "../../embeddings/embedder-gemini";
+import { JINA_MAX_INPUT_TOKENS } from "../../embeddings/embedder-jina";
 import {
   COUNT_TOKENS_TIMEOUT_MS,
   type Doc,
@@ -15,13 +18,21 @@ import {
 import { embeddedText } from "./document-builder";
 import { log } from "./logger";
 
+/** The per-input token limit of the configured provider. */
+export function inputLimitTokens(): number {
+  return config.embedding.provider === "jina"
+    ? JINA_MAX_INPUT_TOKENS
+    : GEMINI_MAX_INPUT_TOKENS;
+}
+
 export function checkEstimatedLimits(docs: Doc[]): number {
+  const limit = inputLimitTokens();
   let largest = 0;
   for (const doc of docs) {
     const estimate = estimateInputTokens(embeddedText(doc));
-    if (estimate > GEMINI_MAX_INPUT_TOKENS) {
+    if (estimate > limit) {
       throw new Error(
-        `input ${doc.id} is over the ${GEMINI_MAX_INPUT_TOKENS}-token embedding limit: ` +
+        `input ${doc.id} is over the ${limit}-token embedding limit: ` +
           `estimated ${estimate} tokens (an estimate, not a tokenizer count; ` +
           "the text is not truncated)",
       );
@@ -40,18 +51,19 @@ export function plannedRequests(docs: Doc[]): number {
   );
 }
 
-export function asDocumentEmbedder(embedder: IEmbedder): GeminiEmbedder {
+export function asDocumentEmbedder(embedder: IEmbedder): DocumentEmbedder {
   if (
-    typeof (embedder as Partial<GeminiEmbedder>).embedDocuments !== "function"
+    typeof (embedder as Partial<DocumentEmbedder>).embedDocuments !== "function"
   ) {
     throw new Error(
-      "embedder has no embedDocuments; EMBEDDING_PROVIDER must be gemini",
+      "embedder has no embedDocuments; EMBEDDING_PROVIDER must be gemini or jina",
     );
   }
-  return embedder as GeminiEmbedder;
+  return embedder as unknown as DocumentEmbedder;
 }
 
 export async function countExactTokens(docs: Doc[]): Promise<number> {
+  // Gemini only. Jina has no free count endpoint, so dryRun does not call this for it.
   const ai = new GoogleGenAI({
     apiKey: config.embedding.apiKey,
     httpOptions: { timeout: COUNT_TOKENS_TIMEOUT_MS },
@@ -92,21 +104,34 @@ export async function dryRun(docs: Doc[], offline: boolean): Promise<void> {
   const requests = plannedRequests(docs);
   const budget = config.embedding.maxTokensBudget;
   const batch = config.embedding.batchSize;
+  const limit = inputLimitTokens();
+  const jina = config.embedding.provider === "jina";
 
-  if (offline) {
+  if (offline || jina) {
+    // Jina: no exact pre-count. The approximation gates the budget here, and the
+    // build enforces the budget on the usage Jina reports for each request.
+    const label = jina ? "JINA, NOT A JINA COUNT" : "OFFLINE, NOT A GEMINI COUNT";
     const approx = approximateTokens(docs);
     log(
-      `DRY RUN (OFFLINE, NOT A GEMINI COUNT): inputs=${inputs} articles=${articles} ` +
+      `DRY RUN (${label}): inputs=${inputs} articles=${articles} ` +
         `clauses=${clauses} reports=${reports} batch=${batch} requests_planned=${requests}`,
     );
     log(
-      `DRY RUN (OFFLINE): tokens_approx=${approx} (char-based approximation: chars/4, heuristic) ` +
-        `est_cost_usd_approx=${costUsd(approx).toFixed(4)} budget=${budget}`,
+      `DRY RUN (${label}): tokens_approx=${approx} (char-based approximation: chars/4, heuristic)` +
+        (jina ? "" : ` est_cost_usd_approx=${costUsd(approx).toFixed(4)}`) +
+        ` budget=${budget}`,
     );
     log(
-      `DRY RUN (OFFLINE): max_input_estimate_tokens=${largestEstimate} ` +
-        `(limit ${GEMINI_MAX_INPUT_TOKENS}; char-based estimate, not a tokenizer count)`,
+      `DRY RUN (${label}): max_input_estimate_tokens=${largestEstimate} ` +
+        `(limit ${limit}; char-based estimate, not a tokenizer count)`,
     );
+    if (jina && approx > budget) {
+      throw new Error(
+        `approximate token total ${approx} exceeds EMBED_MAX_TOKENS_BUDGET=${budget}; aborting`,
+      );
+    }
+    if (offline) return;
+    log("DRY RUN: nothing was sent to Jina.");
     return;
   }
 
@@ -129,7 +154,7 @@ export async function dryRun(docs: Doc[], offline: boolean): Promise<void> {
   );
   log(
     `DRY RUN: max_input_estimate_tokens=${largestEstimate} ` +
-      `(limit ${GEMINI_MAX_INPUT_TOKENS}; char-based estimate, not a tokenizer count)`,
+      `(limit ${limit}; char-based estimate, not a tokenizer count)`,
   );
   if (tokens > budget) {
     throw new Error(

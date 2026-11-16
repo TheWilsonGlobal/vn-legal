@@ -74,6 +74,12 @@ function captureEnv(): "full" | "masked" | "metadata_only" {
 
 const EMBEDDING_PROVIDER = env("EMBEDDING_PROVIDER");
 const EMBEDDING_DIM = intEnv("EMBEDDING_DIM", 768);
+// Keys for the selected embedding provider: primary first, then the rotation
+// fallbacks (used only on quota or rejection, see key-rotation.ts).
+const EMBEDDING_KEY_VARS =
+  EMBEDDING_PROVIDER === "jina"
+    ? ["JINA_EMBEDDING_API_KEY", "JINA_EMBEDDING_API_KEY_2", "JINA_EMBEDDING_API_KEY_3"]
+    : ["GEMINI_EMBEDDING_API_KEY", "GEMINI_EMBEDDING_API_KEY_2", "GEMINI_EMBEDDING_API_KEY_3"];
 
 export const config = {
   // Database paths
@@ -102,8 +108,11 @@ export const config = {
 
   // Embedding model (legacy transformers embedder)
   embeddingModel: "Xenova/paraphrase-multilingual-MiniLM-L12-v2",
-  // 768 for the Gemini index (EMBEDDING_DIM); the legacy 384-d store otherwise.
-  embeddingDimension: EMBEDDING_PROVIDER === "gemini" ? EMBEDDING_DIM : 384,
+  // EMBEDDING_DIM for the Gemini (768) or Jina (1024) index; the legacy 384-d store otherwise.
+  embeddingDimension:
+    EMBEDDING_PROVIDER === "gemini" || EMBEDDING_PROVIDER === "jina"
+      ? EMBEDDING_DIM
+      : 384,
 
   // Embedding backend: "transformers" (WebAssembly), "api" (Python ONNX), or "llamacpp" (GGUF)
   // Legacy: read only by the old-index comparison (ER1) and the legacy embedder path.
@@ -113,7 +122,7 @@ export const config = {
     | "llamacpp",
   embeddingApiUrl: process.env.EMBEDDING_API_URL || "http://127.0.0.1:8765",
 
-  // Embeddings served by Gemini (agent path). Keys are read here only.
+  // Embeddings served by Gemini or Jina (agent path). Keys are read here only.
   embedding: {
     provider: EMBEDDING_PROVIDER, // EMBEDDING_PROVIDER: no default, undefined when unset
     model: env("EMBEDDING_MODEL"), // EMBEDDING_MODEL: no default
@@ -121,9 +130,10 @@ export const config = {
     batchSize: intEnv("EMBED_BATCH_SIZE", 50),
     maxConcurrency: intEnv("EMBED_MAX_CONCURRENCY", 2),
     maxTokensBudget: intEnv("EMBED_MAX_TOKENS_BUDGET", 2000000),
-    apiKey: env("GEMINI_EMBEDDING_API_KEY"),
+    apiKey: env(EMBEDDING_KEY_VARS[0]),
     // Optional extra keys, tried in order only when a key is over quota (see key-rotation.ts).
-    fallbackApiKeys: [env("GEMINI_EMBEDDING_API_KEY_2"), env("GEMINI_EMBEDDING_API_KEY_3")]
+    fallbackApiKeys: EMBEDDING_KEY_VARS.slice(1)
+      .map((name) => env(name))
       .filter((k): k is string => typeof k === "string" && k.trim().length > 0)
       .filter((k, i, all) => all.indexOf(k) === i),
   },

@@ -19,7 +19,8 @@ const RATED_METHODS = new Set([
 
 export function isQuotaError(err: unknown): boolean {
   const status = (err as { httpStatus?: unknown } | null)?.httpStatus;
-  if (status === 429) return true;
+  // 402 is Jina's "insufficient balance"; it means the same as a spent quota here.
+  if (status === 429 || status === 402) return true;
   const text = err instanceof Error ? `${err.message}` : String(err);
   return /\b429\b|RESOURCE_EXHAUSTED|quota/i.test(text);
 }
@@ -70,6 +71,15 @@ export function withKeyRotation<T extends object>(
       const name = String(prop);
       if (RATED_METHODS.has(name)) {
         return (...args: unknown[]) => callWithRotation(name, args);
+      }
+      if (name === "tokensUsed") {
+        // Usage across every key, so a budget is not undercounted after rotation.
+        return () =>
+          chain.reduce(
+            (sum, embedder) =>
+              sum + (typeof embedder.tokensUsed === "function" ? embedder.tokensUsed() : 0),
+            0,
+          );
       }
       const value = Reflect.get(target, prop, target);
       return typeof value === "function" ? value.bind(target) : value;

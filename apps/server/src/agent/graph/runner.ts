@@ -153,10 +153,16 @@ export function createLegalAgentRunner(
 
   function embeddingInfo(): AgentRunResponse["embedding"] {
     const provider =
-      cfg.embedding.provider === "transformers" ? "transformers" : "gemini";
+      cfg.embedding.provider === "transformers"
+        ? "transformers"
+        : cfg.embedding.provider === "jina"
+          ? "jina"
+          : "gemini";
     return {
       provider,
-      model: cfg.embedding.model ?? "gemini-embedding-2",
+      model:
+        cfg.embedding.model ??
+        (provider === "jina" ? "jina-embeddings-v3" : "gemini-embedding-2"),
       dim: cfg.embedding.dim,
       index_id: indexIdOf(provider),
     };
@@ -166,7 +172,7 @@ export function createLegalAgentRunner(
    * The index_id the store was built with, read from the manifest next to
    * CONGRAPH_VECTOR_DB_PATH (plan §5.6). Falls back to the id the build uses.
    */
-  function indexIdOf(provider: "gemini" | "transformers"): string {
+  function indexIdOf(provider: "gemini" | "jina" | "transformers"): string {
     if (provider === "transformers") return "legacy-transformers-384";
     const storePath = cfg.conGraphVectorDbPath;
     try {
@@ -178,7 +184,7 @@ export function createLegalAgentRunner(
     } catch {
       // Unreadable manifest: boot refuses to start on it, so the fallback is for display only.
     }
-    return "gemini-embedding-2-768";
+    return provider === "jina" ? "jina-embeddings-v3-1024" : "gemini-embedding-2-768";
   }
 
   function toContext(
