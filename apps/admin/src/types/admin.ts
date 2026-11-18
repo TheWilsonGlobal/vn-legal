@@ -1,3 +1,10 @@
+import type {
+  AdminSessionItem,
+  LlmCallDetail,
+  SessionRecord,
+  TracesResponse,
+} from "@shared/types/agent";
+
 export interface AdminStats {
   graph: {
     total_nodes: number;
@@ -20,52 +27,15 @@ export interface Activity {
 }
 
 /** A live agent session of any owner (GET /api/admin/sessions). */
-export interface AdminSession {
-  session_id: string;
-  title: string;
-  turns: number;
-  message_count: number;
-  record_count: number;
-  tokens: number;
-  active: boolean;
-  created_at: string;
-  last_active_at: string;
-  owner: string;
-}
+export type AdminSession = AdminSessionItem;
 
 /** One chat-model call, kept whole (llm_call records only). */
-export interface LlmCall {
-  call_index: number;
-  model: string;
-  latency_ms: number;
-  system: string;
-  messages: {
-    role: "user" | "assistant" | "tool";
-    content: string;
-    tool_calls?: { name: string; args: unknown }[];
-    tool_call_id?: string;
-    name?: string;
-  }[];
-  response: { text: string; tool_calls: { name: string; args: unknown }[] };
-  usage: { input: number; output: number } | null;
-}
+export type LlmCall = LlmCallDetail;
 
 /** One record of a session log (GET /api/admin/traces). */
-export interface TraceRecord {
-  session_id: string;
-  run_id: string | null;
-  seq: number;
-  created_at: string;
-  kind: string;
-  content: string;
-  llm?: LlmCall;
-}
+export type TraceRecord = SessionRecord;
 
-export interface TracesPage {
-  records: TraceRecord[];
-  total: number;
-  kind_counts: Record<string, number>;
-}
+export type TracesPage = TracesResponse;
 
 export interface Community {
   id: string;

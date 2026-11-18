@@ -21,7 +21,7 @@ import type {
   TracesQuery,
   TracesResponse,
   VerifyTracesResponse,
-} from "../types/agent";
+} from "@shared/types/agent";
 
 const BASE = "/api/agent";
 

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { getMemoryStats } from "../../api/agent";
-import type { ObservabilityStatus } from "../../types/agent";
+import type { ObservabilityStatus } from "@shared/types/agent";
 import type { ViewProps } from "../../types/views";
 import "../../styles/views.css";
 import { useApiResource } from "../sessions/useApiResource";

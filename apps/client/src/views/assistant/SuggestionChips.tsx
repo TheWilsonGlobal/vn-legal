@@ -1,4 +1,4 @@
-import type { ExampleChip } from "../../types/agent";
+import type { ExampleChip } from "@shared/types/agent";
 
 export type ExamplesState =
   | { status: "idle" }

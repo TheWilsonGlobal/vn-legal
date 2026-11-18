@@ -1,7 +1,7 @@
 import type { InfoState, ViewId } from "../types/views";
 import { VIEWS } from "./viewRegistry";
 import { signInWithGoogle, signOut } from "../api/auth";
-import type { SessionListItem } from "../types/agent";
+import type { SessionListItem } from "@shared/types/agent";
 import SegmentedToggle from "../components/SegmentedToggle";
 
 export interface UserProfile {

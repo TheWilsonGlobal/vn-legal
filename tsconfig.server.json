@@ -4,7 +4,7 @@
     "module": "ESNext",
     "lib": ["ES2022"],
     "outDir": "./dist",
-    "rootDir": "./apps/server/src",
+    "rootDir": "./apps",
     "moduleResolution": "bundler",
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -13,6 +13,6 @@
     "declaration": false,
     "sourceMap": false
   },
-  "include": ["apps/server/src/**/*"],
+  "include": ["apps/server/src/**/*", "apps/shared/**/*"],
   "exclude": ["node_modules", "dist", "apps/server/tests"]
 }

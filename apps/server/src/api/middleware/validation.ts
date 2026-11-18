@@ -2,6 +2,7 @@
 // Request Validation Middleware
 // ============================================================================
 
+import { MAX_QUERY_LENGTH } from "../../../../shared/constants/src";
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { z } from "zod";
 
@@ -93,7 +94,7 @@ export const schemas = {
   // Request body validation
   body: {
     consultation: z.object({
-      query: z.string().min(1).max(1000),
+      query: z.string().min(1).max(MAX_QUERY_LENGTH),
       filters: z
         .object({
           part_id: z.string().optional(),

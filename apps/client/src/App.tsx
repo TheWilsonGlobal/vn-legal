@@ -17,7 +17,7 @@ import { initAuth, onAuthChange, signInWithGoogle } from "./api/auth";
 import { Sidebar } from "./layout/Sidebar";
 import { Topbar, type UserProfile } from "./layout/Topbar";
 import { VIEWS, resolveView } from "./layout/viewRegistry";
-import type { ConsultContext, SessionListItem } from "./types/agent";
+import type { ConsultContext, SessionListItem } from "@shared/types/agent";
 import type { InfoState, ViewId, ViewProps } from "./types/views";
 import "./styles/workbench.css";
 

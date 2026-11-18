@@ -1,4 +1,4 @@
-import type { ObservationGraph } from "../../types/agent";
+import type { ObservationGraph } from "@shared/types/agent";
 
 const COL_GAP = 230;
 const ROW_GAP = 66;

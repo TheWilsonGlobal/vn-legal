@@ -2,6 +2,7 @@
 // Consultation Routes
 // ============================================================================
 
+import { MAX_QUERY_LENGTH } from "../../../../shared/constants/src";
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { LegalConsultationAgent } from "../../agent/setup";
 import type { ConsultationRequest } from "../../shared/types";
@@ -14,7 +15,7 @@ import { activityLog } from "../../shared/activity-log";
 // ----------------------------------------------------------------------------
 
 const ConsultationQuerySchema = z.object({
-  query: z.string().min(1).max(1000),
+  query: z.string().min(1).max(MAX_QUERY_LENGTH),
   filters: z
     .object({
       part_id: z.string().optional(),
@@ -49,7 +50,11 @@ export async function consultationRoutes(
           type: "object",
           required: ["query"],
           properties: {
-            query: { type: "string", minLength: 1, maxLength: 1000 },
+            query: {
+              type: "string",
+              minLength: 1,
+              maxLength: MAX_QUERY_LENGTH,
+            },
             filters: {
               type: "object",
               properties: {

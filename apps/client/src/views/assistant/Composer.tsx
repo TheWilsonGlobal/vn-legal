@@ -1,7 +1,9 @@
 import { useId } from "react";
 import type { KeyboardEvent } from "react";
 
-export const MAX_QUERY = 1000;
+import { MAX_QUERY_LENGTH } from "@shared/constants/src";
+
+export const MAX_QUERY = MAX_QUERY_LENGTH;
 
 interface Props {
   value: string;

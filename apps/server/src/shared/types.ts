@@ -2,6 +2,27 @@
 // Legal Domain Types
 // ============================================================================
 
+import type {
+  ArticleClause,
+  ArticleMetadata,
+  ChapterNode,
+  LegalConceptCategory,
+  PartNode,
+  SectionNode,
+  SubsectionNode,
+} from "../../../shared/types/legal";
+
+export type {
+  ArticleClause,
+  ArticleMetadata,
+  ChapterNode,
+  ClausePoint,
+  LegalConceptCategory,
+  PartNode,
+  SectionNode,
+  SubsectionNode,
+} from "../../../shared/types/legal";
+
 export interface ArticleNode {
   id: string;
   article_number: number;
@@ -15,88 +36,12 @@ export interface ArticleNode {
   [key: string]: unknown;
 }
 
-export interface ArticleMetadata {
-  part: string;
-  chapter: string;
-  section: string;
-  subsection: string;
-  source?: string;
-}
-
-export interface ArticleClause {
-  id: string;
-  clause_number: number;
-  text: string;
-  article_id: string;
-  points: ClausePoint[];
-  point_count: number;
-  [key: string]: unknown;
-}
-
-export interface ClausePoint {
-  id: string;
-  point_letter: string;
-  text: string;
-  clause_id: string;
-  [key: string]: unknown;
-}
-
-// ----------------------------------------------------------------------------
-// Hierarchical Structural Types
-// ----------------------------------------------------------------------------
-
-export interface PartNode {
-  id: string;
-  name: string;
-  name_short: string;
-  part_number: number;
-  chapter_count: number;
-  article_count: number;
-}
-
-export interface ChapterNode {
-  id: string;
-  name: string;
-  name_short: string;
-  chapter_roman: string;
-  part_id: string;
-  article_count: number;
-  section_count: number;
-  summary: string;
-}
-
-export interface SectionNode {
-  id: string;
-  name: string;
-  name_short: string;
-  section_number: number;
-  chapter_id: string;
-  article_count: number;
-  subsection_count: number;
-}
-
-export interface SubsectionNode {
-  id: string;
-  name: string;
-  name_short: string;
-  subsection_number: number;
-  section_id: string;
-  article_count: number;
-}
-
 export interface LegalConceptNode {
   id: string;
   name: string;
   name_variants: string[];
   definition: string;
-  category:
-    | "person"
-    | "property"
-    | "contract"
-    | "inheritance"
-    | "family"
-    | "tort"
-    | "other";
+  category: LegalConceptCategory;
   source_articles: string[];
   source_clauses: string[];
   related_concepts: string[];

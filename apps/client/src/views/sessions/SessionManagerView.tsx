@@ -5,7 +5,7 @@ import {
   deleteSession,
   listSessions,
 } from "../../api/agent";
-import type { SessionListItem } from "../../types/agent";
+import type { SessionListItem } from "@shared/types/agent";
 import type { ViewProps } from "../../types/views";
 import "../../styles/views.css";
 import { errorMessage, formatTime, useApiResource } from "./useApiResource";

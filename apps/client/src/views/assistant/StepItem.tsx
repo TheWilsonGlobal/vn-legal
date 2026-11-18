@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { AgentStep, Citation } from "../../types/agent";
+import type { AgentStep, Citation } from "@shared/types/agent";
 import type { SectionsForce } from "../../components/MarkdownView";
 import CitationBreadcrumbs from "./CitationBreadcrumbs";
 import ObservationGraphView from "./ObservationGraphView";

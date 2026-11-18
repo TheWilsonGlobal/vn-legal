@@ -1,4 +1,4 @@
-import type { Citation } from "../../types/agent";
+import type { Citation } from "@shared/types/agent";
 
 function citationLabel(c: Citation): string {
   return `${c.breadcrumb.join(" › ")} (via ${c.via})`;

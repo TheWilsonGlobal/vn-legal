@@ -4,7 +4,7 @@ import MarkdownView, {
   type SectionsForce,
 } from "../../components/MarkdownView";
 import { countResponseSections } from "../../components/markdown-sections";
-import type { AgentStep, Citation } from "../../types/agent";
+import type { AgentStep, Citation } from "@shared/types/agent";
 import StepItem from "./StepItem";
 
 export type TurnStatus = "streaming" | "done" | "error" | "cancelled";

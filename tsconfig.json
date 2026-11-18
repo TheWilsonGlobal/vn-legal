@@ -16,8 +16,9 @@
     "noFallthroughCasesInSwitch": true,
     "paths": {
       "@/*": ["./apps/client/src/*"],
-      "@admin/*": ["./apps/admin/src/*"]
+      "@admin/*": ["./apps/admin/src/*"],
+      "@shared/*": ["./apps/shared/*"]
     }
   },
-  "include": ["apps/client/src", "apps/admin/src", "*.config.ts"]
+  "include": ["apps/client/src", "apps/admin/src", "apps/shared", "*.config.ts"]
 }

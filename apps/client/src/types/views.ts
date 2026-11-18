@@ -1,4 +1,4 @@
-import type { AgentInfo, ConsultContext } from "./agent";
+import type { AgentInfo, ConsultContext } from "@shared/types/agent";
 
 /** Ids of the five workbench views; also the folder name under src/views/. */
 export type ViewId = "assistant" | "sessions" | "traces" | "settings";

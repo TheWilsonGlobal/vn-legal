@@ -6,7 +6,7 @@ import {
   isAbortError,
   streamAgent,
 } from "../../api/agent";
-import type { AgentEvent, Citation, SessionTurn } from "../../types/agent";
+import type { AgentEvent, Citation, SessionTurn } from "@shared/types/agent";
 import type { ViewProps } from "../../types/views";
 import "../../styles/assistant.css";
 import ArticleModal from "./ArticleModal";

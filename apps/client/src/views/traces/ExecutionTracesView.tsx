@@ -4,7 +4,7 @@ import type {
   SessionDetail,
   SessionRecord,
   VerifyTracesResponse,
-} from "../../types/agent";
+} from "@shared/types/agent";
 import type { ViewProps } from "../../types/views";
 import "../../styles/views.css";
 import {

@@ -1,4 +1,4 @@
-import type { ObservationReport } from "../../types/agent";
+import type { ObservationReport } from "@shared/types/agent";
 
 interface Props {
   reports: ObservationReport[];
